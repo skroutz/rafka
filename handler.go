@@ -68,7 +68,13 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 					ew = writer.WriteError("TIMEOUT")
 				}
 			case "DEL":
-				ew = writer.WriteBulkString("OK")
+				id := (ConsumerID)(command.Get(1))
+				deleted := rs.manager.Delete(id)
+				if deleted {
+					ew = writer.WriteInt(1)
+				} else {
+					ew = writer.WriteInt(0)
+				}
 			default:
 				ew = writer.WriteError("Command not support")
 			}

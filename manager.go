@@ -56,7 +56,6 @@ func (m *Manager) Get(id ConsumerID) *kafka.Consumer {
 	// Create consumer if it doesn't exist
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
 	if _, ok := m.pool[id]; !ok {
 		// TODO fix topic name
 		c := kafka.NewConsumer([]string{"http_bots"}, &kafkacfg)
@@ -74,6 +73,24 @@ func (m *Manager) Get(id ConsumerID) *kafka.Consumer {
 	}
 
 	return m.pool[id].consumer
+}
+
+func (m *Manager) Delete(id ConsumerID) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	e, ok := m.pool[id]
+	if !ok { // No consumer with that ID
+		return false
+	}
+
+	delete(m.pool, id)
+	// We don't block waiting for the consumer to finish. Perhaps we should.
+	//
+	// To our defense, when the Manager is stopped it will be wait for all
+	// consumers to gracefully stop due the m.wg WaitGroup.
+	e.cancel()
+	return true
 }
 
 func (m *Manager) cleanup() {
