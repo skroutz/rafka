@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"sync"
@@ -68,70 +67,51 @@ func main() {
 }
 
 func run(c *cli.Context) {
-	var err error
-	log := log.New(os.Stderr, "[rafka] ", log.Ldate|log.Ltime)
+	l := log.New(os.Stderr, "[rafka] ", log.Ldate|log.Ltime)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	var wg sync.WaitGroup
-
-	// var consumer Consumer
-	// if c.String("consumer") == "kafka" {
-	// 	consumer = NewKafka(&kafkacfg)
-	// } else {
-	// 	consumer = NewDummy()
-	// }
-
 	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	done := make(chan struct{}, 1)
 
-	listener, err := net.Listen("tcp", ":6380")
-	if err != nil {
-		panic(err)
-	}
+	l.Println("Spawning Consumer Manager")
+	var manager_wg sync.WaitGroup
+	manager_ctx, manager_cancel := context.WithCancel(ctx)
+	manager := NewManager(manager_ctx)
 
-	wg.Add(1)
-
-	log.Println("Spawning Consumer Manager")
-	manager := NewManager(ctx)
-
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
+	manager_wg.Add(1)
+	go func() {
+		defer manager_wg.Done()
 		manager.Run()
-	}(ctx)
+	}()
 
-	log.Println("Spawning Redis server")
-	go func(ctx context.Context, manager *Manager) {
-		defer wg.Done()
-		for {
-			select {
-			case <-ctx.Done():
-				log.Printf("[server] Shutting down...")
-				return
-			default:
-				conn, err := listener.Accept()
-				if err == nil {
-					go handleConnection(manager, conn)
-				} else {
-					log.Println("Error on accept: ", err)
-				}
-			}
+	l.Println("Spawning Redis server")
+	var redis_wg sync.WaitGroup
+	redis_ctx, redis_cancel := context.WithCancel(ctx)
+	redis_server := NewRedisServer(redis_ctx, manager)
+
+	redis_wg.Add(1)
+	go func() {
+		defer redis_wg.Done()
+		err := redis_server.ListenAndServe(":6380")
+		if err != nil {
+			panic(err)
 		}
-	}(ctx, manager)
+
+	}()
 
 	select {
 	case <-sigCh:
-		log.Println("Received shutdown signal..")
-		listener.Close()
-		cancel()
-	case <-done:
+		l.Println("Received shutdown signal..")
 	}
 
-	log.Println("Waiting for goroutines to finish...")
-	wg.Wait()
+	l.Println("Waiting for redis server to shutdown...")
+	redis_cancel()
+	redis_wg.Wait()
 
-	log.Println("Bye!")
+	l.Println("Waiting for consumer manager to shutdown...")
+	manager_cancel()
+	manager_wg.Wait()
+
+	l.Println("Bye!")
 }
