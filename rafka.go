@@ -93,8 +93,18 @@ func run(c *cli.Context) {
 	}
 
 	wg.Add(1)
-	log.Println("Spawning Redis server")
+
+	log.Println("Spawning Consumer Manager")
+	manager := NewManager(ctx)
+
+	wg.Add(1)
 	go func(ctx context.Context) {
+		defer wg.Done()
+		manager.Run()
+	}(ctx)
+
+	log.Println("Spawning Redis server")
+	go func(ctx context.Context, manager *Manager) {
 		defer wg.Done()
 		for {
 			select {
@@ -104,13 +114,13 @@ func run(c *cli.Context) {
 			default:
 				conn, err := listener.Accept()
 				if err == nil {
-					go handleConnection(parent_ctx, conn)
+					go handleConnection(manager, conn)
 				} else {
 					log.Println("Error on accept: ", err)
 				}
 			}
 		}
-	}(ctx)
+	}(ctx, manager)
 
 	select {
 	case <-sigCh:
