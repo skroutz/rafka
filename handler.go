@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	redisproto "github.com/secmask/go-redisproto"
 )
@@ -17,12 +18,14 @@ type RedisServer struct {
 	manager  *Manager
 	ctx      context.Context
 	inFlight sync.WaitGroup
+	timeout  time.Duration
 }
 
-func NewRedisServer(ctx context.Context, manager *Manager) *RedisServer {
+func NewRedisServer(ctx context.Context, manager *Manager, timeout time.Duration) *RedisServer {
 	rs := RedisServer{
 		ctx:     ctx,
 		manager: manager,
+		timeout: timeout,
 		log:     log.New(os.Stderr, "[redis] ", log.Ldate|log.Ltime),
 	}
 
@@ -55,11 +58,14 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 			case "GET":
 				id := (ConsumerID)(command.Get(1))
 				c := rs.manager.Get(id)
+				ticker := time.NewTicker(rs.timeout)
 				select {
 				case <-rs.ctx.Done():
 					ew = writer.WriteError("SHUTDOWN")
 				case msg := <-c.Out():
 					ew = writer.WriteBulkString(msg)
+				case <-ticker.C:
+					ew = writer.WriteError("TIMEOUT")
 				}
 			case "DEL":
 				ew = writer.WriteBulkString("OK")

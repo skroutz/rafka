@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/urfave/cli"
@@ -88,7 +89,7 @@ func run(c *cli.Context) {
 	l.Println("Spawning Redis server")
 	var redis_wg sync.WaitGroup
 	redis_ctx, redis_cancel := context.WithCancel(ctx)
-	redis_server := NewRedisServer(redis_ctx, manager)
+	redis_server := NewRedisServer(redis_ctx, manager, 5*time.Second)
 
 	redis_wg.Add(1)
 	go func() {
