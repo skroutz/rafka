@@ -123,6 +123,17 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 				} else {
 					ew = writer.WriteInt(0)
 				}
+			case "CLIENT":
+				subcmd := strings.ToUpper(string(command.Get(1)))
+				switch subcmd {
+				case "SETNAME":
+					rafka_con.SetID(string(command.Get(2)))
+					ew = writer.WriteBulkString("OK")
+				case "GETNAME":
+					ew = writer.WriteBulkString(rafka_con.String())
+				default:
+					ew = writer.WriteError("ERR syntax error")
+				}
 			default:
 				ew = writer.WriteError("Command not support")
 			}
