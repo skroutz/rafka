@@ -52,13 +52,12 @@ func (m *Manager) Run() {
 	}
 }
 
-func (m *Manager) Get(id ConsumerID) *kafka.Consumer {
+func (m *Manager) Get(id ConsumerID, topics []string) *kafka.Consumer {
 	// Create consumer if it doesn't exist
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.pool[id]; !ok {
-		// TODO fix topic name
-		c := kafka.NewConsumer([]string{"http_bots"}, &kafkacfg)
+		c := kafka.NewConsumer(topics, &kafkacfg)
 		ctx, cancel := context.WithCancel(m.ctx)
 		m.pool[id] = &consumerPoolEntry{
 			consumer: c,

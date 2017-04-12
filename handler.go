@@ -3,6 +3,8 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -37,6 +39,8 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
+	// Setup a temporary ID
+	id := ConsumerID(conn.RemoteAddr().String())
 
 	var ew error
 	for {
@@ -56,8 +60,12 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 			case "PING":
 				ew = writer.WriteBulkString("PONG")
 			case "GET":
-				id := (ConsumerID)(command.Get(1))
-				c := rs.manager.Get(id)
+				topics, err := parseTopics(string(command.Get(1)))
+				if err != nil {
+					ew = writer.WriteError(err.Error())
+					break
+				}
+				c := rs.manager.Get(id, topics)
 				ticker := time.NewTicker(rs.timeout)
 				select {
 				case <-rs.ctx.Done():
@@ -127,4 +135,23 @@ Loop:
 	rs.log.Println("All connections handled, Bye!")
 
 	return nil
+}
+
+func parseTopics(key string) ([]string, error) {
+	parts := strings.SplitN(key, ":", 2)
+	if len(parts) != 2 {
+		return nil, errors.New(fmt.Sprintf("Cannot parse topics: '%s'", key))
+	}
+	switch parts[0] {
+	case "topics":
+		topics := strings.Split(parts[1], ",")
+		if len(topics) > 0 {
+			return topics, nil
+		} else {
+			return nil, errors.New("Not enough topics")
+		}
+
+	default:
+		return nil, errors.New(fmt.Sprintf("Cannot parse topics: '%s'", key))
+	}
 }
