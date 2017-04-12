@@ -52,18 +52,20 @@ func (m *Manager) Run() {
 	}
 }
 
-func (m *Manager) Get(id ConsumerID, topics []string) *kafka.Consumer {
+func (m *Manager) Get(id ConsumerID, groupID string, topics []string) *kafka.Consumer {
 	// Create consumer if it doesn't exist
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.pool[id]; !ok {
-		c := kafka.NewConsumer(topics, &kafkacfg)
+		cfg := kafkacfg
+		cfg.SetKey("group.id", groupID)
+		c := kafka.NewConsumer(topics, &cfg)
 		ctx, cancel := context.WithCancel(m.ctx)
 		m.pool[id] = &consumerPoolEntry{
 			consumer: c,
 			cancel:   cancel,
 		}
-		m.log.Printf("Spawning Consumer id:%s config:%v", id, kafkacfg)
+		m.log.Printf("Spawning Consumer id:%s config:%v", id, cfg)
 		m.wg.Add(1)
 		go func(ctx context.Context) {
 			defer m.wg.Done()

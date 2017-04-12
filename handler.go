@@ -20,31 +20,45 @@ type clientID string
 
 type RedisConnection struct {
 	id      clientID
+	groupID string
 	manager *Manager
 	log     *log.Logger
+	ready   bool
 }
 
 func NewRedisConnection(manager *Manager) *RedisConnection {
 	rc := RedisConnection{
 		manager: manager,
 		log:     log.New(os.Stderr, "[redis-connection] ", log.Ldate|log.Ltime),
+		ready:   false,
 	}
 
 	return &rc
 }
 
-func (rc *RedisConnection) SetID(id string) {
+func (rc *RedisConnection) SetID(id string) error {
 	rc.id = clientID(id)
+	parts := strings.SplitN(id, ":", 2)
+	if len(parts) != 2 {
+		return errors.New("Cannot parse group.id")
+	}
+	rc.groupID = parts[0]
+	rc.ready = true
+
+	return nil
 }
 
 func (rc *RedisConnection) String() string {
 	return string(rc.id)
 }
 
-func (rc *RedisConnection) Consumer(topics []string) *kafka.Consumer {
-	// TODO check if id is set
+func (rc *RedisConnection) Consumer(topics []string) (*kafka.Consumer, error) {
+	if !rc.ready {
+		return nil, errors.New("Connection is not ready, please identify before using")
+	}
+
 	consumerID := ConsumerID(fmt.Sprintf("%s|%s", rc.id, topics))
-	return rc.manager.Get(consumerID, topics)
+	return rc.manager.Get(consumerID, rc.groupID, topics), nil
 }
 
 func (rc *RedisConnection) Close() {
@@ -105,7 +119,11 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 					ew = writer.WriteError(err.Error())
 					break
 				}
-				c := rafka_con.Consumer(topics)
+				c, err := rafka_con.Consumer(topics)
+				if err != nil {
+					ew = writer.WriteError(err.Error())
+				}
+
 				ticker := time.NewTicker(rs.timeout)
 				select {
 				case <-rs.ctx.Done():
