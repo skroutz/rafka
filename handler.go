@@ -13,7 +13,43 @@ import (
 	"time"
 
 	redisproto "github.com/secmask/go-redisproto"
+	"golang.skroutz.gr/skroutz/rafka/kafka"
 )
+
+type clientID string
+
+type RedisConnection struct {
+	id      clientID
+	manager *Manager
+	log     *log.Logger
+}
+
+func NewRedisConnection(manager *Manager) *RedisConnection {
+	rc := RedisConnection{
+		manager: manager,
+		log:     log.New(os.Stderr, "[redis-connection] ", log.Ldate|log.Ltime),
+	}
+
+	return &rc
+}
+
+func (rc *RedisConnection) SetID(id string) {
+	rc.id = clientID(id)
+}
+
+func (rc *RedisConnection) String() string {
+	return string(rc.id)
+}
+
+func (rc *RedisConnection) Consumer(topics []string) *kafka.Consumer {
+	// TODO check if id is set
+	consumerID := ConsumerID(fmt.Sprintf("%s|%s", rc.id, topics))
+	return rc.manager.Get(consumerID, topics)
+}
+
+func (rc *RedisConnection) Close() {
+	rc.log.Printf("[%s] Closing()", rc.id)
+}
 
 type RedisServer struct {
 	log      *log.Logger
@@ -39,8 +75,12 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
-	// Setup a temporary ID
-	id := ConsumerID(conn.RemoteAddr().String())
+
+	rafka_con := NewRedisConnection(rs.manager)
+	defer rafka_con.Close()
+
+	// Set a temporary ID
+	rafka_con.SetID(conn.RemoteAddr().String())
 
 	var ew error
 	for {
@@ -65,7 +105,7 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 					ew = writer.WriteError(err.Error())
 					break
 				}
-				c := rs.manager.Get(id, topics)
+				c := rafka_con.Consumer(topics)
 				ticker := time.NewTicker(rs.timeout)
 				select {
 				case <-rs.ctx.Done():
