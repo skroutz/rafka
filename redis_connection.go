@@ -18,6 +18,7 @@ type RedisConnection struct {
 	groupID string
 	manager *Manager
 	used    ConsumerIDs
+	byTopic map[string]ConsumerID
 	log     *log.Logger
 	ready   bool
 }
@@ -26,6 +27,7 @@ func NewRedisConnection(manager *Manager) *RedisConnection {
 	rc := RedisConnection{
 		manager: manager,
 		used:    make(ConsumerIDs),
+		byTopic: make(map[string]ConsumerID),
 		log:     log.New(os.Stderr, "[redis-connection] ", log.Ldate|log.Ltime),
 		ready:   false,
 	}
@@ -55,7 +57,22 @@ func (rc *RedisConnection) Consumer(topics []string) (*kafka.Consumer, error) {
 	}
 
 	consumerID := ConsumerID(fmt.Sprintf("%s|%s", rc.id, strings.Join(topics, ",")))
+
+	// Check for topics that already have a consumer
+	for _, topic := range topics {
+		if existingID, ok := rc.byTopic[topic]; ok {
+			if existingID != consumerID {
+				return nil, errors.New(fmt.Sprintf("Topic %s is already consumed!", topic))
+			}
+		}
+	}
+
+	// Register the Consumer
 	rc.used[consumerID] = true
+	for _, topic := range topics {
+		rc.byTopic[topic] = consumerID
+	}
+
 	return rc.manager.Get(consumerID, rc.groupID, topics), nil
 }
 
