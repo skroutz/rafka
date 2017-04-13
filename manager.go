@@ -59,7 +59,7 @@ func (m *Manager) Get(id ConsumerID, groupID string, topics []string) *kafka.Con
 	if _, ok := m.pool[id]; !ok {
 		cfg := kafkacfg
 		cfg.SetKey("group.id", groupID)
-		c := kafka.NewConsumer(topics, &cfg)
+		c := kafka.NewConsumer(string(id), topics, &cfg)
 		ctx, cancel := context.WithCancel(m.ctx)
 		m.pool[id] = &consumerPoolEntry{
 			consumer: c,

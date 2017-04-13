@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -10,19 +11,22 @@ import (
 )
 
 type Consumer struct {
+	id       string
 	consumer *kafka.Consumer
 	topics   []string
 	out      chan string
 	log      *log.Logger
 }
 
-func NewConsumer(topics []string, cfg *kafka.ConfigMap) *Consumer {
+func NewConsumer(id string, topics []string, cfg *kafka.ConfigMap) *Consumer {
 	var err error
 
-	c := new(Consumer)
-	c.topics = topics
-	c.log = log.New(os.Stderr, "[consumer] ", log.Ldate|log.Ltime)
-	c.out = make(chan string)
+	log_prefix := fmt.Sprintf("[consumer:%s] ", id)
+	c := Consumer{
+		id:     id,
+		topics: topics,
+		log:    log.New(os.Stderr, log_prefix, log.Ldate|log.Ltime),
+		out:    make(chan string)}
 
 	c.consumer, err = kafka.NewConsumer(cfg)
 	if err != nil {
@@ -30,7 +34,7 @@ func NewConsumer(topics []string, cfg *kafka.ConfigMap) *Consumer {
 		c.log.Fatal(err)
 	}
 
-	return c
+	return &c
 }
 
 func (c *Consumer) Out() <-chan string {
