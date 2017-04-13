@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"golang.skroutz.gr/skroutz/rafka/kafka"
 )
 
@@ -57,8 +58,15 @@ func (m *Manager) Get(id ConsumerID, groupID string, topics []string) *kafka.Con
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.pool[id]; !ok {
-		cfg := kafkacfg
+		// Generate a new ConfigMap
+		// Copying/reusing the same between consumers seems
+		// to silently make the consumer non-operational.
+		cfg := make(rdkafka.ConfigMap)
+		for k, v := range kafkacfg {
+			cfg[k] = v
+		}
 		cfg.SetKey("group.id", groupID)
+
 		c := kafka.NewConsumer(string(id), topics, &cfg)
 		ctx, cancel := context.WithCancel(m.ctx)
 		m.pool[id] = &consumerPoolEntry{
