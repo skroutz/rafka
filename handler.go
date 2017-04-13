@@ -60,7 +60,7 @@ func (rc *RedisConnection) Consumer(topics []string) (*kafka.Consumer, error) {
 		return nil, errors.New("Connection is not ready, please identify before using")
 	}
 
-	consumerID := ConsumerID(fmt.Sprintf("%s|%s", rc.id, topics))
+	consumerID := ConsumerID(fmt.Sprintf("%s|%s", rc.id, strings.Join(topics, ",")))
 	rc.used[consumerID] = true
 	return rc.manager.Get(consumerID, rc.groupID, topics), nil
 }

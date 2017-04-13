@@ -73,7 +73,7 @@ func (m *Manager) Get(id ConsumerID, groupID string, topics []string) *kafka.Con
 			consumer: c,
 			cancel:   cancel,
 		}
-		m.log.Printf("Spawning Consumer id:%s config:%v", id, cfg)
+		m.log.Printf("Spawning Consumer %s config:%v", id, cfg)
 		m.wg.Add(1)
 		go func(ctx context.Context) {
 			defer m.wg.Done()
@@ -113,7 +113,7 @@ func (m *Manager) cleanup() {
 	defer m.mu.Unlock()
 
 	for id, entry := range m.pool {
-		m.log.Printf("Terminating consumer id:%s", id)
+		m.log.Printf("Terminating consumer %s", id)
 		entry.cancel()
 	}
 
@@ -127,7 +127,7 @@ func (m *Manager) reapStale() {
 	defer m.mu.Unlock()
 	for id, _ := range m.pool {
 		// TODO actual cleanup
-		m.log.Printf("Cleaning up: id:%s", id)
+		m.log.Printf("Cleaning up: %s", id)
 	}
 	return
 }
