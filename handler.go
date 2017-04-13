@@ -17,11 +17,13 @@ import (
 )
 
 type clientID string
+type ConsumerIDs map[ConsumerID]bool
 
 type RedisConnection struct {
 	id      clientID
 	groupID string
 	manager *Manager
+	used    ConsumerIDs
 	log     *log.Logger
 	ready   bool
 }
@@ -29,6 +31,7 @@ type RedisConnection struct {
 func NewRedisConnection(manager *Manager) *RedisConnection {
 	rc := RedisConnection{
 		manager: manager,
+		used:    make(ConsumerIDs),
 		log:     log.New(os.Stderr, "[redis-connection] ", log.Ldate|log.Ltime),
 		ready:   false,
 	}
@@ -58,11 +61,15 @@ func (rc *RedisConnection) Consumer(topics []string) (*kafka.Consumer, error) {
 	}
 
 	consumerID := ConsumerID(fmt.Sprintf("%s|%s", rc.id, topics))
+	rc.used[consumerID] = true
 	return rc.manager.Get(consumerID, rc.groupID, topics), nil
 }
 
-func (rc *RedisConnection) Close() {
-	rc.log.Printf("[%s] Closing()", rc.id)
+func (rc *RedisConnection) Teardown() {
+	for cid, _ := range rc.used {
+		rc.log.Printf("[%s] Scheduling teardown for %s", rc.id, cid)
+		rc.manager.Delete(cid)
+	}
 }
 
 type RedisServer struct {
@@ -91,7 +98,7 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
 	rafka_con := NewRedisConnection(rs.manager)
-	defer rafka_con.Close()
+	defer rafka_con.Teardown()
 
 	// Set a temporary ID
 	rafka_con.SetID(conn.RemoteAddr().String())

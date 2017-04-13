@@ -98,6 +98,12 @@ func (m *Manager) Delete(id ConsumerID) bool {
 	//
 	// To our defense, when the Manager is stopped it will be wait for all
 	// consumers to gracefully stop due the m.wg WaitGroup.
+
+	// TODO we might end up with two consumers with the same
+	// configration if a new Get() instanciates a new consumer
+	// before the old one is destroyed. We need to investigate
+	// if that's something to worry about. We could also make
+	// consumer destroy sync and be done with it.
 	e.cancel()
 	return true
 }
