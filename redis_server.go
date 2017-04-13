@@ -72,6 +72,7 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 				c, err := rafka_con.Consumer(topics)
 				if err != nil {
 					ew = writer.WriteError(err.Error())
+					break
 				}
 
 				ticker := time.NewTicker(rs.timeout)
