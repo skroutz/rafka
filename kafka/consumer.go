@@ -41,6 +41,27 @@ func (c *Consumer) Out() <-chan string {
 	return c.out
 }
 
+func (c *Consumer) Ack(topic string, partition int32, offset int64) error {
+	tp := kafka.TopicPartition{
+		Topic:     &topic,
+		Partition: partition,
+		Offset:    kafka.Offset(offset)}
+
+	offsets := []kafka.TopicPartition{tp}
+	// This is the message offset, we need to point the consumer to the next
+	// message.
+	offsets[0].Offset++
+
+	c.log.Printf("Committing: %+v", offsets)
+	committed, err := c.consumer.CommitOffsets(offsets)
+	if err != nil {
+		c.log.Printf("Error committing offsets %+v, %s", offset, err)
+		return err
+	}
+	c.log.Printf("Committed: %+v", committed)
+
+	return nil
+}
 func (c *Consumer) Run(ctx context.Context) {
 	c.consumer.SubscribeTopics(c.topics, nil)
 

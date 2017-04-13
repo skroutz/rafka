@@ -76,6 +76,20 @@ func (rc *RedisConnection) Consumer(topics []string) (*kafka.Consumer, error) {
 	return rc.manager.Get(consumerID, rc.groupID, topics), nil
 }
 
+func (rc *RedisConnection) ConsumerByTopic(topic string) (*kafka.Consumer, error) {
+	consumerID, ok := rc.byTopic[topic]
+	if !ok {
+		return nil, fmt.Errorf("No consumer for topic %s", topic)
+	}
+
+	consumer, err := rc.manager.ByID(consumerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return consumer, nil
+}
+
 func (rc *RedisConnection) Teardown() {
 	for cid, _ := range rc.used {
 		rc.log.Printf("[%s] Scheduling teardown for %s", rc.id, cid)

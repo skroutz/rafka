@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -82,6 +83,18 @@ func (m *Manager) Get(id ConsumerID, groupID string, topics []string) *kafka.Con
 	}
 
 	return m.pool[id].consumer
+}
+
+func (m *Manager) ByID(id ConsumerID) (*kafka.Consumer, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	entry, ok := m.pool[id]
+	if !ok {
+		return nil, fmt.Errorf("No consumer with ConsumerID %s", id)
+	}
+
+	return entry.consumer, nil
 }
 
 func (m *Manager) Delete(id ConsumerID) bool {

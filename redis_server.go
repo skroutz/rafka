@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -83,6 +84,36 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 					ew = writer.WriteBulkString(msg)
 				case <-ticker.C:
 					ew = writer.WriteError("TIMEOUT")
+				}
+			case "RPUSH":
+				// Only allow rpush commits <ack>
+				key := strings.ToUpper(string(command.Get(1)))
+				if key != "ACKS" {
+					ew = writer.WriteError("ERR You can only push to the 'acks' key")
+					break
+				}
+
+				// Parse Ack
+				topic, partition, offset, err := parseAck(string(command.Get(2)))
+				if err != nil {
+					ew = writer.WriteError(err.Error())
+					break
+				}
+				// Get Consumer
+				c, err := rafka_con.ConsumerByTopic(topic)
+				if err != nil {
+					ew = writer.WriteError(err.Error())
+					break
+				}
+
+				// Ack
+				// TODO blocking?
+				err = c.Ack(topic, partition, offset)
+				if err != nil {
+					ew = writer.WriteError(err.Error())
+					break
+				} else {
+					ew = writer.WriteBulkString("OK")
 				}
 			case "DEL":
 				id := (ConsumerID)(command.Get(1))
@@ -174,4 +205,27 @@ func parseTopics(key string) ([]string, error) {
 	default:
 		return nil, errors.New(fmt.Sprintf("Cannot parse topics: '%s'", key))
 	}
+}
+
+func parseAck(ack string) (string, int32, int64, error) {
+	parts := strings.SplitN(ack, ":", 3)
+	if len(parts) != 3 {
+		return "", 0, 0, errors.New(fmt.Sprintf("Cannot parse ack: '%s'", ack))
+	}
+	var err error
+
+	// Partition
+	partition64, err := strconv.ParseInt(parts[1], 10, 32)
+	if err != nil {
+		return "", 0, 0, err
+	}
+	partition := int32(partition64)
+
+	// Offset
+	offset, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		return "", 0, 0, err
+	}
+
+	return parts[0], partition, offset, nil
 }
