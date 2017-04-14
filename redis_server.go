@@ -64,7 +64,7 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 			switch cmd {
 			case "PING":
 				ew = writer.WriteBulkString("PONG")
-			case "GET":
+			case "BLPOP":
 				topics, err := parseTopics(string(command.Get(1)))
 				if err != nil {
 					ew = writer.WriteError(err.Error())
@@ -76,14 +76,25 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 					break
 				}
 
-				ticker := time.NewTicker(rs.timeout)
+				// Setup Timeout
+				// Check the last argument for an int or use the default.
+				// We do not support 0 as inf.
+				timeout := rs.timeout
+				last_idx := command.ArgCount() - 1
+				secs, err := strconv.Atoi(string(command.Get(last_idx)))
+				if err == nil {
+					timeout = time.Duration(secs) * time.Second
+				}
+				ticker := time.NewTicker(timeout)
+
 				select {
 				case <-rs.ctx.Done():
 					ew = writer.WriteError("SHUTDOWN")
 				case msg := <-c.Out():
 					ew = writer.WriteBulkString(msg)
 				case <-ticker.C:
-					ew = writer.WriteError("TIMEOUT")
+					// BLPOP returns nil on timeout
+					ew = writer.WriteBulk(nil)
 				}
 			case "RPUSH":
 				// Only allow rpush commits <ack>
