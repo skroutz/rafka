@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	redisproto "github.com/secmask/go-redisproto"
 )
 
@@ -91,7 +92,7 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 				case <-rs.ctx.Done():
 					ew = writer.WriteError("SHUTDOWN")
 				case msg := <-c.Out():
-					ew = writer.WriteBulkString(msg)
+					ew = writer.WriteObjects(msgToRedis(msg)...)
 				case <-ticker.C:
 					// BLPOP returns nil on timeout
 					ew = writer.WriteBulk(nil)
@@ -239,4 +240,18 @@ func parseAck(ack string) (string, int32, int64, error) {
 	}
 
 	return parts[0], partition, offset, nil
+}
+
+func msgToRedis(msg *kafka.Message) []interface{} {
+	tp := msg.TopicPartition
+
+	return []interface{}{
+		[]byte("topic"),
+		[]byte(*tp.Topic),
+		[]byte("partition"),
+		int64(tp.Partition),
+		[]byte("offset"),
+		int64(tp.Offset),
+		[]byte("value"),
+		msg.Value}
 }

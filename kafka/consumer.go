@@ -14,7 +14,7 @@ type Consumer struct {
 	id       string
 	consumer *kafka.Consumer
 	topics   []string
-	out      chan string
+	out      chan *kafka.Message
 	log      *log.Logger
 }
 
@@ -26,7 +26,7 @@ func NewConsumer(id string, topics []string, cfg *kafka.ConfigMap) *Consumer {
 		id:     id,
 		topics: topics,
 		log:    log.New(os.Stderr, log_prefix, log.Ldate|log.Ltime),
-		out:    make(chan string)}
+		out:    make(chan *kafka.Message)}
 
 	c.consumer, err = kafka.NewConsumer(cfg)
 	if err != nil {
@@ -37,7 +37,7 @@ func NewConsumer(id string, topics []string, cfg *kafka.ConfigMap) *Consumer {
 	return &c
 }
 
-func (c *Consumer) Out() <-chan string {
+func (c *Consumer) Out() <-chan *kafka.Message {
 	return c.out
 }
 
@@ -102,7 +102,7 @@ Loop:
 					// Just swallow it, we just need to unblock.
 					// the Done() will be dealt in the top level
 					// select {}.
-				case c.out <- msg:
+				case c.out <- e:
 					c.log.Printf("%% Message on %s:\n%s\n",
 						e.TopicPartition, msg)
 				}
