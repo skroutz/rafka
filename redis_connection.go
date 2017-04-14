@@ -62,7 +62,7 @@ func (rc *RedisConnection) Consumer(topics []string) (*kafka.Consumer, error) {
 	for _, topic := range topics {
 		if existingID, ok := rc.byTopic[topic]; ok {
 			if existingID != consumerID {
-				return nil, errors.New(fmt.Sprintf("Topic %s is already consumed!", topic))
+				return nil, fmt.Errorf("Topic %s is already consumed", topic)
 			}
 		}
 	}
@@ -91,7 +91,7 @@ func (rc *RedisConnection) ConsumerByTopic(topic string) (*kafka.Consumer, error
 }
 
 func (rc *RedisConnection) Teardown() {
-	for cid, _ := range rc.used {
+	for cid := range rc.used {
 		rc.log.Printf("[%s] Scheduling teardown for %s", rc.id, cid)
 		rc.manager.Delete(cid)
 	}

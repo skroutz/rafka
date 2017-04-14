@@ -138,7 +138,7 @@ func (m *Manager) cleanup() {
 func (m *Manager) reapStale() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for id, _ := range m.pool {
+	for id := range m.pool {
 		// TODO actual cleanup
 		m.log.Printf("Cleaning up: %s", id)
 	}

@@ -42,11 +42,11 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
-	rafka_con := NewRedisConnection(rs.manager)
-	defer rafka_con.Teardown()
+	rafkaConn := NewRedisConnection(rs.manager)
+	defer rafkaConn.Teardown()
 
 	// Set a temporary ID
-	rafka_con.SetID(conn.RemoteAddr().String())
+	rafkaConn.SetID(conn.RemoteAddr().String())
 
 	var ew error
 	for {
@@ -71,7 +71,7 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 					ew = writer.WriteError(err.Error())
 					break
 				}
-				c, err := rafka_con.Consumer(topics)
+				c, err := rafkaConn.Consumer(topics)
 				if err != nil {
 					ew = writer.WriteError(err.Error())
 					break
@@ -81,8 +81,8 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 				// Check the last argument for an int or use the default.
 				// We do not support 0 as inf.
 				timeout := rs.timeout
-				last_idx := command.ArgCount() - 1
-				secs, err := strconv.Atoi(string(command.Get(last_idx)))
+				lastIdx := command.ArgCount() - 1
+				secs, err := strconv.Atoi(string(command.Get(lastIdx)))
 				if err == nil {
 					timeout = time.Duration(secs) * time.Second
 				}
@@ -112,7 +112,7 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 					break
 				}
 				// Get Consumer
-				c, err := rafka_con.ConsumerByTopic(topic)
+				c, err := rafkaConn.ConsumerByTopic(topic)
 				if err != nil {
 					ew = writer.WriteError(err.Error())
 					break
@@ -139,10 +139,10 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
 				case "SETNAME":
-					rafka_con.SetID(string(command.Get(2)))
+					rafkaConn.SetID(string(command.Get(2)))
 					ew = writer.WriteBulkString("OK")
 				case "GETNAME":
-					ew = writer.WriteBulkString(rafka_con.String())
+					ew = writer.WriteBulkString(rafkaConn.String())
 				default:
 					ew = writer.WriteError("ERR syntax error")
 				}
@@ -203,26 +203,25 @@ Loop:
 func parseTopics(key string) ([]string, error) {
 	parts := strings.SplitN(key, ":", 2)
 	if len(parts) != 2 {
-		return nil, errors.New(fmt.Sprintf("Cannot parse topics: '%s'", key))
+		return nil, fmt.Errorf("Cannot parse topics: '%s'", key)
 	}
 	switch parts[0] {
 	case "topics":
 		topics := strings.Split(parts[1], ",")
 		if len(topics) > 0 {
 			return topics, nil
-		} else {
-			return nil, errors.New("Not enough topics")
 		}
 
+		return nil, errors.New("Not enough topics")
 	default:
-		return nil, errors.New(fmt.Sprintf("Cannot parse topics: '%s'", key))
+		return nil, fmt.Errorf("Cannot parse topics: '%s'", key)
 	}
 }
 
 func parseAck(ack string) (string, int32, int64, error) {
 	parts := strings.SplitN(ack, ":", 3)
 	if len(parts) != 3 {
-		return "", 0, 0, errors.New(fmt.Sprintf("Cannot parse ack: '%s'", ack))
+		return "", 0, 0, fmt.Errorf("Cannot parse ack: '%s'", ack)
 	}
 	var err error
 

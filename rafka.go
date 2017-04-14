@@ -76,25 +76,25 @@ func run(c *cli.Context) {
 	ctx := context.Background()
 
 	l.Println("Spawning Consumer Manager")
-	var manager_wg sync.WaitGroup
-	manager_ctx, manager_cancel := context.WithCancel(ctx)
-	manager := NewManager(manager_ctx)
+	var managerWg sync.WaitGroup
+	managerCtx, managerCancel := context.WithCancel(ctx)
+	manager := NewManager(managerCtx)
 
-	manager_wg.Add(1)
+	managerWg.Add(1)
 	go func() {
-		defer manager_wg.Done()
+		defer managerWg.Done()
 		manager.Run()
 	}()
 
 	l.Println("Spawning Redis server")
-	var redis_wg sync.WaitGroup
-	redis_ctx, redis_cancel := context.WithCancel(ctx)
-	redis_server := NewRedisServer(redis_ctx, manager, 5*time.Second)
+	var redisWg sync.WaitGroup
+	redisCtx, redisCancel := context.WithCancel(ctx)
+	redisServer := NewRedisServer(redisCtx, manager, 5*time.Second)
 
-	redis_wg.Add(1)
+	redisWg.Add(1)
 	go func() {
-		defer redis_wg.Done()
-		err := redis_server.ListenAndServe(":6380")
+		defer redisWg.Done()
+		err := redisServer.ListenAndServe(":6380")
 		if err != nil {
 			panic(err)
 		}
@@ -107,12 +107,12 @@ func run(c *cli.Context) {
 	}
 
 	l.Println("Waiting for redis server to shutdown...")
-	redis_cancel()
-	redis_wg.Wait()
+	redisCancel()
+	redisWg.Wait()
 
 	l.Println("Waiting for consumer manager to shutdown...")
-	manager_cancel()
-	manager_wg.Wait()
+	managerCancel()
+	managerWg.Wait()
 
 	l.Println("Bye!")
 }
