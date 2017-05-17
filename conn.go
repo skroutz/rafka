@@ -13,7 +13,7 @@ import (
 type clientID string
 type ConsumerIDs map[ConsumerID]bool
 
-type RedisConnection struct {
+type Conn struct {
 	id      clientID
 	groupID string
 	manager *Manager
@@ -23,19 +23,19 @@ type RedisConnection struct {
 	ready   bool
 }
 
-func NewRedisConnection(manager *Manager) *RedisConnection {
-	rc := RedisConnection{
+func NewConn(manager *Manager) *Conn {
+	rc := Conn{
 		manager: manager,
 		used:    make(ConsumerIDs),
 		byTopic: make(map[string]ConsumerID),
-		log:     log.New(os.Stderr, "[redis-connection] ", log.Ldate|log.Ltime),
+		log:     log.New(os.Stderr, "[client] ", log.Ldate|log.Ltime),
 		ready:   false,
 	}
 
 	return &rc
 }
 
-func (rc *RedisConnection) SetID(id string) error {
+func (rc *Conn) SetID(id string) error {
 	rc.id = clientID(id)
 	parts := strings.SplitN(id, ":", 2)
 	if len(parts) != 2 {
@@ -47,11 +47,11 @@ func (rc *RedisConnection) SetID(id string) error {
 	return nil
 }
 
-func (rc *RedisConnection) String() string {
+func (rc *Conn) String() string {
 	return string(rc.id)
 }
 
-func (rc *RedisConnection) Consumer(topics []string) (*kafka.Consumer, error) {
+func (rc *Conn) Consumer(topics []string) (*kafka.Consumer, error) {
 	if !rc.ready {
 		return nil, errors.New("Connection is not ready, please identify before using")
 	}
@@ -76,7 +76,7 @@ func (rc *RedisConnection) Consumer(topics []string) (*kafka.Consumer, error) {
 	return rc.manager.Get(consumerID, rc.groupID, topics), nil
 }
 
-func (rc *RedisConnection) ConsumerByTopic(topic string) (*kafka.Consumer, error) {
+func (rc *Conn) ConsumerByTopic(topic string) (*kafka.Consumer, error) {
 	consumerID, ok := rc.byTopic[topic]
 	if !ok {
 		return nil, fmt.Errorf("No consumer for topic %s", topic)
@@ -90,7 +90,7 @@ func (rc *RedisConnection) ConsumerByTopic(topic string) (*kafka.Consumer, error
 	return consumer, nil
 }
 
-func (rc *RedisConnection) Teardown() {
+func (rc *Conn) Teardown() {
 	for cid := range rc.used {
 		rc.log.Printf("[%s] Scheduling teardown for %s", rc.id, cid)
 		rc.manager.Delete(cid)
