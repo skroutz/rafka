@@ -59,7 +59,7 @@ func (c *Conn) Consumer(topics []string) (*kafka.Consumer, error) {
 	for _, topic := range topics {
 		if existingID, ok := c.byTopic[topic]; ok {
 			if existingID != consumerID {
-				return nil, fmt.Errorf("Topic %s is already consumed", topic)
+				return nil, fmt.Errorf("Topic %s has another consumer", topic)
 			}
 		}
 	}
