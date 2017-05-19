@@ -10,14 +10,11 @@ import (
 	"golang.skroutz.gr/skroutz/rafka/kafka"
 )
 
-type clientID string
-type ConsumerIDs map[ConsumerID]bool
-
 type Conn struct {
-	id      clientID
+	id      string
 	groupID string
 	manager *Manager
-	used    ConsumerIDs
+	used    map[ConsumerID]bool
 	byTopic map[string]ConsumerID
 	log     *log.Logger
 	ready   bool
@@ -26,7 +23,7 @@ type Conn struct {
 func NewConn(manager *Manager) *Conn {
 	rc := Conn{
 		manager: manager,
-		used:    make(ConsumerIDs),
+		used:    make(map[ConsumerID]bool),
 		byTopic: make(map[string]ConsumerID),
 		log:     log.New(os.Stderr, "[client] ", log.Ldate|log.Ltime),
 		ready:   false,
@@ -36,7 +33,7 @@ func NewConn(manager *Manager) *Conn {
 }
 
 func (rc *Conn) SetID(id string) error {
-	rc.id = clientID(id)
+	rc.id = id
 	parts := strings.SplitN(id, ":", 2)
 	if len(parts) != 2 {
 		return errors.New("Cannot parse group.id")

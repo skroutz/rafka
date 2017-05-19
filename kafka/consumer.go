@@ -62,6 +62,7 @@ func (c *Consumer) Ack(topic string, partition int32, offset int64) error {
 
 	return nil
 }
+
 func (c *Consumer) Run(ctx context.Context) {
 	c.consumer.SubscribeTopics(c.topics, nil)
 
