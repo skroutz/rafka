@@ -45,11 +45,11 @@ func (s *Server) handleConn(conn net.Conn) {
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
-	rafkaConn := NewConn(s.manager)
-	defer rafkaConn.Teardown(&s.clientIDs)
+	client := NewClient(s.manager)
+	defer client.Teardown(&s.clientIDs)
 
 	// Set a temporary ID
-	rafkaConn.SetID(conn.RemoteAddr().String())
+	client.SetID(conn.RemoteAddr().String())
 
 	var ew error
 	for {
@@ -60,7 +60,7 @@ func (s *Server) handleConn(conn net.Conn) {
 			if ok {
 				ew = writer.WriteError(err.Error())
 			} else {
-				s.log.Println(err, ", closed connection to", conn.RemoteAddr())
+				s.log.Println(err, "closed connection to", client.id)
 				break
 			}
 		} else {
@@ -74,7 +74,7 @@ func (s *Server) handleConn(conn net.Conn) {
 					ew = writer.WriteError(err.Error())
 					break
 				}
-				c, err := rafkaConn.Consumer(topics)
+				c, err := client.Consumer(topics)
 				if err != nil {
 					ew = writer.WriteError(err.Error())
 					break
@@ -115,7 +115,7 @@ func (s *Server) handleConn(conn net.Conn) {
 					break
 				}
 				// Get Consumer
-				c, err := rafkaConn.ConsumerByTopic(topic)
+				c, err := client.ConsumerByTopic(topic)
 				if err != nil {
 					ew = writer.WriteError(err.Error())
 					break
@@ -150,7 +150,7 @@ func (s *Server) handleConn(conn net.Conn) {
 						break
 					}
 
-					err := rafkaConn.SetID(id)
+					err := client.SetID(id)
 					if err != nil {
 						s.clientIDs.Delete(id)
 						ew = writer.WriteError(err.Error())
@@ -159,7 +159,7 @@ func (s *Server) handleConn(conn net.Conn) {
 
 					ew = writer.WriteBulkString("OK")
 				case "GETNAME":
-					ew = writer.WriteBulkString(rafkaConn.String())
+					ew = writer.WriteBulkString(client.String())
 				default:
 					ew = writer.WriteError("ERR syntax error")
 				}

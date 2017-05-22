@@ -11,7 +11,7 @@ import (
 	"golang.skroutz.gr/skroutz/rafka/kafka"
 )
 
-type Conn struct {
+type Client struct {
 	id      string
 	groupID string
 	manager *ConsumerManager
@@ -21,8 +21,8 @@ type Conn struct {
 	ready   bool
 }
 
-func NewConn(manager *ConsumerManager) *Conn {
-	c := Conn{
+func NewClient(manager *ConsumerManager) *Client {
+	c := Client{
 		manager: manager,
 		used:    make(map[ConsumerID]bool),
 		byTopic: make(map[string]ConsumerID),
@@ -36,7 +36,7 @@ func NewConn(manager *ConsumerManager) *Conn {
 // SetID sets the id for c.
 //
 // It returns an error if id is not in the form of "<group.id>:<client-name>".
-func (c *Conn) SetID(id string) error {
+func (c *Client) SetID(id string) error {
 	parts := strings.SplitN(id, ":", 2)
 	if len(parts) != 2 {
 		return errors.New("Cannot parse group.id")
@@ -49,11 +49,11 @@ func (c *Conn) SetID(id string) error {
 	return nil
 }
 
-func (c *Conn) String() string {
+func (c *Client) String() string {
 	return string(c.id)
 }
 
-func (c *Conn) Consumer(topics []string) (*kafka.Consumer, error) {
+func (c *Client) Consumer(topics []string) (*kafka.Consumer, error) {
 	if !c.ready {
 		return nil, errors.New("Connection is not ready, please identify before using")
 	}
@@ -78,7 +78,7 @@ func (c *Conn) Consumer(topics []string) (*kafka.Consumer, error) {
 	return c.manager.Get(consumerID, c.groupID, topics), nil
 }
 
-func (c *Conn) ConsumerByTopic(topic string) (*kafka.Consumer, error) {
+func (c *Client) ConsumerByTopic(topic string) (*kafka.Consumer, error) {
 	consumerID, ok := c.byTopic[topic]
 	if !ok {
 		return nil, fmt.Errorf("No consumer for topic %s", topic)
@@ -92,7 +92,7 @@ func (c *Conn) ConsumerByTopic(topic string) (*kafka.Consumer, error) {
 	return consumer, nil
 }
 
-func (c *Conn) Teardown(clientIDs *syncmap.Map) {
+func (c *Client) Teardown(clientIDs *syncmap.Map) {
 	for cid := range c.used {
 		c.log.Printf("[%s] Scheduling teardown for %s", c.id, cid)
 		c.manager.Delete(cid)
