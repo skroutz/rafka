@@ -29,24 +29,24 @@ type Server struct {
 }
 
 func NewServer(ctx context.Context, manager *Manager, timeout time.Duration) *Server {
-	rs := Server{
+	s := Server{
 		ctx:     ctx,
 		manager: manager,
 		timeout: timeout,
 		log:     log.New(os.Stderr, "[server] ", log.Ldate|log.Ltime),
 	}
 
-	return &rs
+	return &s
 }
 
-func (rs *Server) handleConn(conn net.Conn) {
+func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
-	rafkaConn := NewConn(rs.manager)
-	defer rafkaConn.Teardown(&rs.clientIDs)
+	rafkaConn := NewConn(s.manager)
+	defer rafkaConn.Teardown(&s.clientIDs)
 
 	// Set a temporary ID
 	rafkaConn.SetID(conn.RemoteAddr().String())
@@ -60,7 +60,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 			if ok {
 				ew = writer.WriteError(err.Error())
 			} else {
-				rs.log.Println(err, ", closed connection to", conn.RemoteAddr())
+				s.log.Println(err, ", closed connection to", conn.RemoteAddr())
 				break
 			}
 		} else {
@@ -83,7 +83,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 				// Setup Timeout
 				// Check the last argument for an int or use the default.
 				// We do not support 0 as inf.
-				timeout := rs.timeout
+				timeout := s.timeout
 				lastIdx := command.ArgCount() - 1
 				secs, err := strconv.Atoi(string(command.Get(lastIdx)))
 				if err == nil {
@@ -92,7 +92,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 				ticker := time.NewTicker(timeout)
 
 				select {
-				case <-rs.ctx.Done():
+				case <-s.ctx.Done():
 					ew = writer.WriteError("SHUTDOWN")
 				case msg := <-c.Out():
 					ew = writer.WriteObjects(msgToRedis(msg)...)
@@ -132,7 +132,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 				}
 			case "DEL":
 				id := (ConsumerID)(command.Get(1))
-				deleted := rs.manager.Delete(id)
+				deleted := s.manager.Delete(id)
 				if deleted {
 					ew = writer.WriteInt(1)
 				} else {
@@ -144,7 +144,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 				case "SETNAME":
 					id := string(command.Get(2))
 
-					_, loaded := rs.clientIDs.LoadOrStore(id, true)
+					_, loaded := s.clientIDs.LoadOrStore(id, true)
 					if loaded {
 						ew = writer.WriteError(fmt.Sprintf("id %s is already taken", id))
 						break
@@ -171,13 +171,13 @@ func (rs *Server) handleConn(conn net.Conn) {
 			writer.Flush()
 		}
 		if ew != nil {
-			rs.log.Println("Connection closed", ew)
+			s.log.Println("Connection closed", ew)
 			break
 		}
 	}
 }
 
-func (rs *Server) ListenAndServe(port string) error {
+func (s *Server) ListenAndServe(port string) error {
 	listener, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -185,34 +185,34 @@ func (rs *Server) ListenAndServe(port string) error {
 
 	// Unblock Accept()
 	go func() {
-		<-rs.ctx.Done()
-		rs.log.Printf("Shutting down...")
+		<-s.ctx.Done()
+		s.log.Printf("Shutting down...")
 		listener.Close()
 	}()
 
 Loop:
 	for {
 		select {
-		case <-rs.ctx.Done():
+		case <-s.ctx.Done():
 			break Loop
 		default:
 			conn, err := listener.Accept()
 			if err == nil {
-				rs.inFlight.Add(1)
+				s.inFlight.Add(1)
 
 				go func() {
-					defer rs.inFlight.Done()
-					rs.handleConn(conn)
+					defer s.inFlight.Done()
+					s.handleConn(conn)
 				}()
 			} else {
-				rs.log.Println("Error on accept: ", err)
+				s.log.Println("Error on accept: ", err)
 			}
 		}
 	}
 
-	rs.log.Println("Waiting for inflight connections...")
-	rs.inFlight.Wait()
-	rs.log.Println("All connections handled, Bye!")
+	s.log.Println("Waiting for inflight connections...")
+	s.inFlight.Wait()
+	s.log.Println("All connections handled, Bye!")
 
 	return nil
 }
