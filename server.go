@@ -15,14 +15,17 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	redisproto "github.com/secmask/go-redisproto"
+	// TODO(agis): get rid of this when we upgrade to 1.9
+	"golang.org/x/sync/syncmap"
 )
 
 type Server struct {
-	log      *log.Logger
-	manager  *Manager
-	ctx      context.Context
-	inFlight sync.WaitGroup
-	timeout  time.Duration
+	log       *log.Logger
+	manager   *Manager
+	ctx       context.Context
+	inFlight  sync.WaitGroup
+	timeout   time.Duration
+	clientIDs syncmap.Map
 }
 
 func NewServer(ctx context.Context, manager *Manager, timeout time.Duration) *Server {
@@ -43,7 +46,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
 	rafkaConn := NewConn(rs.manager)
-	defer rafkaConn.Teardown()
+	defer rafkaConn.Teardown(&rs.clientIDs)
 
 	// Set a temporary ID
 	rafkaConn.SetID(conn.RemoteAddr().String())
@@ -139,7 +142,21 @@ func (rs *Server) handleConn(conn net.Conn) {
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
 				case "SETNAME":
-					rafkaConn.SetID(string(command.Get(2)))
+					id := string(command.Get(2))
+
+					_, loaded := rs.clientIDs.LoadOrStore(id, true)
+					if loaded {
+						ew = writer.WriteError(fmt.Sprintf("id %s is already taken", id))
+						break
+					}
+
+					err := rafkaConn.SetID(id)
+					if err != nil {
+						s.clientIDs.Delete(id)
+						ew = writer.WriteError(err.Error())
+						break
+					}
+
 					ew = writer.WriteBulkString("OK")
 				case "GETNAME":
 					ew = writer.WriteBulkString(rafkaConn.String())
@@ -147,7 +164,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 					ew = writer.WriteError("ERR syntax error")
 				}
 			default:
-				ew = writer.WriteError("Command not support")
+				ew = writer.WriteError("Command not supported")
 			}
 		}
 		if command.IsLast() {

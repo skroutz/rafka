@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"golang.org/x/sync/syncmap"
 	"golang.skroutz.gr/skroutz/rafka/kafka"
 )
 
@@ -32,12 +33,16 @@ func NewConn(manager *Manager) *Conn {
 	return &c
 }
 
+// SetID sets the id for c.
+//
+// It returns an error if id is not in the form of "<group.id>:<client-name>".
 func (c *Conn) SetID(id string) error {
-	c.id = id
 	parts := strings.SplitN(id, ":", 2)
 	if len(parts) != 2 {
 		return errors.New("Cannot parse group.id")
 	}
+
+	c.id = id
 	c.groupID = parts[0]
 	c.ready = true
 
@@ -87,9 +92,11 @@ func (c *Conn) ConsumerByTopic(topic string) (*kafka.Consumer, error) {
 	return consumer, nil
 }
 
-func (c *Conn) Teardown() {
+func (c *Conn) Teardown(clientIDs *syncmap.Map) {
 	for cid := range c.used {
 		c.log.Printf("[%s] Scheduling teardown for %s", c.id, cid)
 		c.manager.Delete(cid)
 	}
+
+	clientIDs.Delete(c.id)
 }
