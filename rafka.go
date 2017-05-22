@@ -86,15 +86,15 @@ func run(c *cli.Context) {
 		manager.Run()
 	}()
 
-	l.Println("Spawning Redis server")
-	var redisWg sync.WaitGroup
-	redisCtx, redisCancel := context.WithCancel(ctx)
-	redisServer := NewRedisServer(redisCtx, manager, 5*time.Second)
+	l.Println("Spawning server")
+	var serverWg sync.WaitGroup
+	serverCtx, serverCancel := context.WithCancel(ctx)
+	rafka := NewServer(serverCtx, manager, 5*time.Second)
 
-	redisWg.Add(1)
+	serverWg.Add(1)
 	go func() {
-		defer redisWg.Done()
-		err := redisServer.ListenAndServe(":6380")
+		defer serverWg.Done()
+		err := rafka.ListenAndServe(":6380")
 		if err != nil {
 			panic(err)
 		}
@@ -106,9 +106,9 @@ func run(c *cli.Context) {
 		l.Println("Received shutdown signal..")
 	}
 
-	l.Println("Waiting for redis server to shutdown...")
-	redisCancel()
-	redisWg.Wait()
+	l.Println("Waiting for server to shutdown...")
+	serverCancel()
+	serverWg.Wait()
 
 	l.Println("Waiting for consumer manager to shutdown...")
 	managerCancel()

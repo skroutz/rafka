@@ -17,7 +17,7 @@ import (
 	redisproto "github.com/secmask/go-redisproto"
 )
 
-type RedisServer struct {
+type Server struct {
 	log      *log.Logger
 	manager  *Manager
 	ctx      context.Context
@@ -25,24 +25,24 @@ type RedisServer struct {
 	timeout  time.Duration
 }
 
-func NewRedisServer(ctx context.Context, manager *Manager, timeout time.Duration) *RedisServer {
-	rs := RedisServer{
+func NewServer(ctx context.Context, manager *Manager, timeout time.Duration) *Server {
+	rs := Server{
 		ctx:     ctx,
 		manager: manager,
 		timeout: timeout,
-		log:     log.New(os.Stderr, "[redis] ", log.Ldate|log.Ltime),
+		log:     log.New(os.Stderr, "[server] ", log.Ldate|log.Ltime),
 	}
 
 	return &rs
 }
 
-func (rs *RedisServer) handleConnection(conn net.Conn) {
+func (rs *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
-	rafkaConn := NewRedisConnection(rs.manager)
+	rafkaConn := NewConn(rs.manager)
 	defer rafkaConn.Teardown()
 
 	// Set a temporary ID
@@ -160,7 +160,7 @@ func (rs *RedisServer) handleConnection(conn net.Conn) {
 	}
 }
 
-func (rs *RedisServer) ListenAndServe(port string) error {
+func (rs *Server) ListenAndServe(port string) error {
 	listener, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -185,7 +185,7 @@ Loop:
 
 				go func() {
 					defer rs.inFlight.Done()
-					rs.handleConnection(conn)
+					rs.handleConn(conn)
 				}()
 			} else {
 				rs.log.Println("Error on accept: ", err)

@@ -12,20 +12,22 @@ import (
 	"golang.skroutz.gr/skroutz/rafka/kafka"
 )
 
+type consumerPool map[ConsumerID]*consumerPoolEntry
+
 type ConsumerID string
+
 type consumerPoolEntry struct {
 	consumer *kafka.Consumer
 	cancel   context.CancelFunc
 }
 
-type consumerPool map[ConsumerID]*consumerPoolEntry
-
 type Manager struct {
-	pool consumerPool
-	log  *log.Logger
-	wg   sync.WaitGroup
 	mu   sync.Mutex
-	ctx  context.Context
+	pool consumerPool
+
+	log *log.Logger
+	wg  sync.WaitGroup
+	ctx context.Context
 }
 
 func NewManager(ctx context.Context) *Manager {
