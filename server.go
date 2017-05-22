@@ -21,14 +21,14 @@ import (
 
 type Server struct {
 	log       *log.Logger
-	manager   *Manager
+	manager   *ConsumerManager
 	ctx       context.Context
 	inFlight  sync.WaitGroup
 	timeout   time.Duration
 	clientIDs syncmap.Map
 }
 
-func NewServer(ctx context.Context, manager *Manager, timeout time.Duration) *Server {
+func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Duration) *Server {
 	s := Server{
 		ctx:     ctx,
 		manager: manager,

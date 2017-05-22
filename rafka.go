@@ -14,6 +14,7 @@ import (
 	"github.com/urfave/cli"
 )
 
+// TODO(agis): This is not used anywhere. Either use it or get rid of it.
 type Consumer interface {
 	Messages() chan<- struct{}
 	Run()
@@ -78,7 +79,7 @@ func run(c *cli.Context) {
 	l.Println("Spawning Consumer Manager")
 	var managerWg sync.WaitGroup
 	managerCtx, managerCancel := context.WithCancel(ctx)
-	manager := NewManager(managerCtx)
+	manager := NewConsumerManager(managerCtx)
 
 	managerWg.Add(1)
 	go func() {

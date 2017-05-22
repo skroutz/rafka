@@ -14,14 +14,14 @@ import (
 type Conn struct {
 	id      string
 	groupID string
-	manager *Manager
+	manager *ConsumerManager
 	used    map[ConsumerID]bool
 	byTopic map[string]ConsumerID
 	log     *log.Logger
 	ready   bool
 }
 
-func NewConn(manager *Manager) *Conn {
+func NewConn(manager *ConsumerManager) *Conn {
 	c := Conn{
 		manager: manager,
 		used:    make(map[ConsumerID]bool),

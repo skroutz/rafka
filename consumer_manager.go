@@ -21,7 +21,7 @@ type consumerPoolEntry struct {
 	cancel   context.CancelFunc
 }
 
-type Manager struct {
+type ConsumerManager struct {
 	mu   sync.Mutex
 	pool consumerPool
 
@@ -30,8 +30,8 @@ type Manager struct {
 	ctx context.Context
 }
 
-func NewManager(ctx context.Context) *Manager {
-	c := Manager{
+func NewConsumerManager(ctx context.Context) *ConsumerManager {
+	c := ConsumerManager{
 		log:  log.New(os.Stderr, "[manager] ", log.Ldate|log.Ltime),
 		pool: make(consumerPool),
 		ctx:  ctx,
@@ -40,7 +40,7 @@ func NewManager(ctx context.Context) *Manager {
 	return &c
 }
 
-func (m *Manager) Run() {
+func (m *ConsumerManager) Run() {
 	tickGC := time.NewTicker(10 * time.Second)
 	defer tickGC.Stop()
 
@@ -56,7 +56,7 @@ func (m *Manager) Run() {
 	}
 }
 
-func (m *Manager) Get(id ConsumerID, groupID string, topics []string) *kafka.Consumer {
+func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *kafka.Consumer {
 	// Create consumer if it doesn't exist
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -87,7 +87,7 @@ func (m *Manager) Get(id ConsumerID, groupID string, topics []string) *kafka.Con
 	return m.pool[id].consumer
 }
 
-func (m *Manager) ByID(id ConsumerID) (*kafka.Consumer, error) {
+func (m *ConsumerManager) ByID(id ConsumerID) (*kafka.Consumer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -99,7 +99,7 @@ func (m *Manager) ByID(id ConsumerID) (*kafka.Consumer, error) {
 	return entry.consumer, nil
 }
 
-func (m *Manager) Delete(id ConsumerID) bool {
+func (m *ConsumerManager) Delete(id ConsumerID) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -123,7 +123,7 @@ func (m *Manager) Delete(id ConsumerID) bool {
 	return true
 }
 
-func (m *Manager) cleanup() {
+func (m *ConsumerManager) cleanup() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -137,7 +137,7 @@ func (m *Manager) cleanup() {
 	m.log.Println("All consumers shut down, bye!")
 }
 
-func (m *Manager) reapStale() {
+func (m *ConsumerManager) reapStale() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for id := range m.pool {
