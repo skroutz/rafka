@@ -1,0 +1,8 @@
+{
+ "api.version.request": true,
+ "bootstrap.servers": "kafka-a.vm.skroutz.gr",
+ "log.connection.close": false,
+ "session.timeout.ms": 6000,
+ "go.events.channel.enable": true,
+ "go.application.rebalance.enable": true
+}
