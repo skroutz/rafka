@@ -25,7 +25,7 @@ type Server struct {
 	ctx       context.Context
 	inFlight  sync.WaitGroup
 	timeout   time.Duration
-	clientIDs syncmap.Map
+	clientIDs syncmap.Map // map[string]*Client
 }
 
 func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Duration) *Server {
@@ -132,7 +132,7 @@ func (s *Server) handleConn(conn net.Conn) {
 				}
 			case "DEL":
 				id := (ConsumerID)(command.Get(1))
-				deleted := s.manager.Delete(id)
+				deleted := s.manager.ShutdownConsumer(id)
 				if deleted {
 					ew = writer.WriteInt(1)
 				} else {

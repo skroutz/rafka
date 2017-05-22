@@ -23,13 +23,11 @@ type Client struct {
 }
 
 func NewClient(cm *ConsumerManager) *Client {
-	c := Client{
+	return &Client{
 		manager:   cm,
 		consumers: make(map[ConsumerID]bool),
 		byTopic:   make(map[string]ConsumerID),
 		log:       log.New(os.Stderr, "[client] ", log.Ldate|log.Ltime)}
-
-	return &c
 }
 
 // SetID sets the id for c.
@@ -93,9 +91,7 @@ func (c *Client) ConsumerByTopic(topic string) (*kafka.Consumer, error) {
 
 func (c *Client) Teardown(clientIDs *syncmap.Map) {
 	for cid := range c.consumers {
-		c.log.Printf("[%s] Scheduling teardown for %s", c.id, cid)
-		c.manager.Delete(cid)
+		c.manager.ShutdownConsumer(cid)
 	}
-
 	clientIDs.Delete(c.id)
 }
