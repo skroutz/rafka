@@ -65,7 +65,7 @@ func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *k
 		// Copying/reusing the same between consumers seems
 		// to silently make the consumer non-operational.
 		cfg := make(rdkafka.ConfigMap)
-		for k, v := range kafkacfg {
+		for k, v := range kafkaCfg {
 			cfg[k] = v
 		}
 		cfg.SetKey("group.id", groupID)

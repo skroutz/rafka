@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/urfave/cli"
 )
 
@@ -20,7 +20,7 @@ type Consumer interface {
 	Run()
 }
 
-var kafkacfg kafka.ConfigMap
+var kafkaCfg rdkafka.ConfigMap
 
 func main() {
 	app := cli.NewApp()
@@ -52,7 +52,7 @@ func main() {
 
 		dec := json.NewDecoder(f)
 		dec.UseNumber()
-		err = dec.Decode(&kafkacfg)
+		err = dec.Decode(&kafkaCfg)
 		if err != nil {
 			return err
 		}

@@ -21,11 +21,11 @@ type Consumer struct {
 func NewConsumer(id string, topics []string, cfg *kafka.ConfigMap) *Consumer {
 	var err error
 
-	log_prefix := fmt.Sprintf("[consumer] [%s] ", id)
+	logPrefix := fmt.Sprintf("[consumer] [%s] ", id)
 	c := Consumer{
 		id:     id,
 		topics: topics,
-		log:    log.New(os.Stderr, log_prefix, log.Ldate|log.Ltime),
+		log:    log.New(os.Stderr, logPrefix, log.Ldate|log.Ltime),
 		out:    make(chan *kafka.Message)}
 
 	c.consumer, err = kafka.NewConsumer(cfg)
