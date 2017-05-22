@@ -10,16 +10,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/urfave/cli"
 )
 
+// TODO(agis): This is not used anywhere. Either use it or get rid of it.
 type Consumer interface {
 	Messages() chan<- struct{}
 	Run()
 }
 
-var kafkacfg kafka.ConfigMap
+var kafkaCfg rdkafka.ConfigMap
 
 func main() {
 	app := cli.NewApp()
@@ -51,7 +52,7 @@ func main() {
 
 		dec := json.NewDecoder(f)
 		dec.UseNumber()
-		err = dec.Decode(&kafkacfg)
+		err = dec.Decode(&kafkaCfg)
 		if err != nil {
 			return err
 		}
@@ -78,7 +79,7 @@ func run(c *cli.Context) {
 	l.Println("Spawning Consumer Manager")
 	var managerWg sync.WaitGroup
 	managerCtx, managerCancel := context.WithCancel(ctx)
-	manager := NewManager(managerCtx)
+	manager := NewConsumerManager(managerCtx)
 
 	managerWg.Add(1)
 	go func() {

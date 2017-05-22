@@ -15,38 +15,41 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	redisproto "github.com/secmask/go-redisproto"
+	// TODO(agis): get rid of this when we upgrade to 1.9
+	"golang.org/x/sync/syncmap"
 )
 
 type Server struct {
-	log      *log.Logger
-	manager  *Manager
-	ctx      context.Context
-	inFlight sync.WaitGroup
-	timeout  time.Duration
+	log       *log.Logger
+	manager   *ConsumerManager
+	ctx       context.Context
+	inFlight  sync.WaitGroup
+	timeout   time.Duration
+	clientIDs syncmap.Map
 }
 
-func NewServer(ctx context.Context, manager *Manager, timeout time.Duration) *Server {
-	rs := Server{
+func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Duration) *Server {
+	s := Server{
 		ctx:     ctx,
 		manager: manager,
 		timeout: timeout,
 		log:     log.New(os.Stderr, "[server] ", log.Ldate|log.Ltime),
 	}
 
-	return &rs
+	return &s
 }
 
-func (rs *Server) handleConn(conn net.Conn) {
+func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
-	rafkaConn := NewConn(rs.manager)
-	defer rafkaConn.Teardown()
+	client := NewClient(s.manager)
+	defer client.Teardown(&s.clientIDs)
 
 	// Set a temporary ID
-	rafkaConn.SetID(conn.RemoteAddr().String())
+	client.SetID(conn.RemoteAddr().String())
 
 	var ew error
 	for {
@@ -57,7 +60,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 			if ok {
 				ew = writer.WriteError(err.Error())
 			} else {
-				rs.log.Println(err, ", closed connection to", conn.RemoteAddr())
+				s.log.Println(err, "closed connection to", client.id)
 				break
 			}
 		} else {
@@ -71,7 +74,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 					ew = writer.WriteError(err.Error())
 					break
 				}
-				c, err := rafkaConn.Consumer(topics)
+				c, err := client.Consumer(topics)
 				if err != nil {
 					ew = writer.WriteError(err.Error())
 					break
@@ -80,7 +83,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 				// Setup Timeout
 				// Check the last argument for an int or use the default.
 				// We do not support 0 as inf.
-				timeout := rs.timeout
+				timeout := s.timeout
 				lastIdx := command.ArgCount() - 1
 				secs, err := strconv.Atoi(string(command.Get(lastIdx)))
 				if err == nil {
@@ -89,7 +92,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 				ticker := time.NewTicker(timeout)
 
 				select {
-				case <-rs.ctx.Done():
+				case <-s.ctx.Done():
 					ew = writer.WriteError("SHUTDOWN")
 				case msg := <-c.Out():
 					ew = writer.WriteObjects(msgToRedis(msg)...)
@@ -112,7 +115,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 					break
 				}
 				// Get Consumer
-				c, err := rafkaConn.ConsumerByTopic(topic)
+				c, err := client.ConsumerByTopic(topic)
 				if err != nil {
 					ew = writer.WriteError(err.Error())
 					break
@@ -129,7 +132,7 @@ func (rs *Server) handleConn(conn net.Conn) {
 				}
 			case "DEL":
 				id := (ConsumerID)(command.Get(1))
-				deleted := rs.manager.Delete(id)
+				deleted := s.manager.Delete(id)
 				if deleted {
 					ew = writer.WriteInt(1)
 				} else {
@@ -139,28 +142,42 @@ func (rs *Server) handleConn(conn net.Conn) {
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
 				case "SETNAME":
-					rafkaConn.SetID(string(command.Get(2)))
+					id := string(command.Get(2))
+
+					_, loaded := s.clientIDs.LoadOrStore(id, true)
+					if loaded {
+						ew = writer.WriteError(fmt.Sprintf("id %s is already taken", id))
+						break
+					}
+
+					err := client.SetID(id)
+					if err != nil {
+						s.clientIDs.Delete(id)
+						ew = writer.WriteError(err.Error())
+						break
+					}
+
 					ew = writer.WriteBulkString("OK")
 				case "GETNAME":
-					ew = writer.WriteBulkString(rafkaConn.String())
+					ew = writer.WriteBulkString(client.String())
 				default:
 					ew = writer.WriteError("ERR syntax error")
 				}
 			default:
-				ew = writer.WriteError("Command not support")
+				ew = writer.WriteError("Command not supported")
 			}
 		}
 		if command.IsLast() {
 			writer.Flush()
 		}
 		if ew != nil {
-			rs.log.Println("Connection closed", ew)
+			s.log.Println("Connection closed", ew)
 			break
 		}
 	}
 }
 
-func (rs *Server) ListenAndServe(port string) error {
+func (s *Server) ListenAndServe(port string) error {
 	listener, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -168,34 +185,34 @@ func (rs *Server) ListenAndServe(port string) error {
 
 	// Unblock Accept()
 	go func() {
-		<-rs.ctx.Done()
-		rs.log.Printf("Shutting down...")
+		<-s.ctx.Done()
+		s.log.Printf("Shutting down...")
 		listener.Close()
 	}()
 
 Loop:
 	for {
 		select {
-		case <-rs.ctx.Done():
+		case <-s.ctx.Done():
 			break Loop
 		default:
 			conn, err := listener.Accept()
 			if err == nil {
-				rs.inFlight.Add(1)
+				s.inFlight.Add(1)
 
 				go func() {
-					defer rs.inFlight.Done()
-					rs.handleConn(conn)
+					defer s.inFlight.Done()
+					s.handleConn(conn)
 				}()
 			} else {
-				rs.log.Println("Error on accept: ", err)
+				s.log.Println("Error on accept: ", err)
 			}
 		}
 	}
 
-	rs.log.Println("Waiting for inflight connections...")
-	rs.inFlight.Wait()
-	rs.log.Println("All connections handled, Bye!")
+	s.log.Println("Waiting for inflight connections...")
+	s.inFlight.Wait()
+	s.log.Println("All connections handled, Bye!")
 
 	return nil
 }
