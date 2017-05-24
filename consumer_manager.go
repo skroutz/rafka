@@ -90,8 +90,11 @@ func (m *ConsumerManager) ByID(id ConsumerID) (*kafka.Consumer, error) {
 	return entry.consumer, nil
 }
 
-// ShutdownConsumer terminates the consumer denoted by id. It returns
+// ShutdownConsumer signals the consumer denoted by id to shutdown. It returns
 // false if no consumer was found.
+//
+// It does not block until the consumer is actually closed (this is instead
+// done when ConsumerManager is closed).
 func (m *ConsumerManager) ShutdownConsumer(id ConsumerID) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()

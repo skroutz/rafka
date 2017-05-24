@@ -102,12 +102,8 @@ func run(c *cli.Context) {
 
 	}()
 
-	select {
-	case <-sigCh:
-		l.Println("Received shutdown signal..")
-	}
-
-	l.Println("Waiting for server to shutdown...")
+	<-sigCh
+	l.Println("Received shutdown signal. Waiting for server to shutdown...")
 	serverCancel()
 	serverWg.Wait()
 
