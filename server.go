@@ -128,14 +128,6 @@ func (s *Server) handleConn(conn net.Conn) {
 				} else {
 					ew = writer.WriteBulkString("OK")
 				}
-			case "DEL":
-				id := (ConsumerID)(command.Get(1))
-				deleted := s.manager.ShutdownConsumer(id)
-				if deleted {
-					ew = writer.WriteInt(1)
-				} else {
-					ew = writer.WriteInt(0)
-				}
 			case "CLIENT":
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
