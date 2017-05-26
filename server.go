@@ -197,15 +197,18 @@ Loop:
 			break Loop
 		default:
 			conn, err := listener.Accept()
-			if err == nil {
+			if err != nil {
+				// we know that closing a listener that blocks
+				// on accepts will return this error
+				if !strings.Contains(err.Error(), "use of closed network connection") {
+					s.log.Println("Accept error: ", err)
+				}
+			} else {
 				s.inFlight.Add(1)
-
 				go func() {
 					defer s.inFlight.Done()
 					s.handleConn(conn)
 				}()
-			} else {
-				s.log.Println("Error on accept: ", err)
 			}
 		}
 	}
