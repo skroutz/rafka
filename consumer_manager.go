@@ -56,7 +56,10 @@ func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *k
 		// to silently make the consumer non-operational.
 		cfg := make(rdkafka.ConfigMap)
 		for k, v := range kafkaCfg {
-			cfg[k] = v
+			err := cfg.SetKey(k, v)
+			if err != nil {
+				m.log.Printf("Error configuring consumer: %s", err)
+			}
 		}
 		cfg.SetKey("group.id", groupID)
 
