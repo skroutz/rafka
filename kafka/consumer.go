@@ -21,11 +21,10 @@ type Consumer struct {
 func NewConsumer(id string, topics []string, cfg *rdkafka.ConfigMap) *Consumer {
 	var err error
 
-	logPrefix := fmt.Sprintf("[consumer] [%s] ", id)
 	c := Consumer{
 		id:     id,
 		topics: topics,
-		log:    log.New(os.Stderr, logPrefix, log.Ldate|log.Ltime),
+		log:    log.New(os.Stderr, fmt.Sprintf("[consumer] [%s] ", id), log.Ldate|log.Ltime),
 		out:    make(chan *rdkafka.Message)}
 
 	c.consumer, err = rdkafka.NewConsumer(cfg)
@@ -41,7 +40,7 @@ func (c *Consumer) Out() <-chan *rdkafka.Message {
 	return c.out
 }
 
-func (c *Consumer) Ack(topic string, partition int32, offset int64) error {
+func (c *Consumer) CommitOffset(topic string, partition int32, offset int64) error {
 	tp := rdkafka.TopicPartition{
 		Topic:     &topic,
 		Partition: partition,
@@ -84,7 +83,10 @@ Loop:
 		case <-ctx.Done():
 			c.log.Println("Closing consumer...")
 			c.log.Printf("Unhandled (no worries) kafka Events(): %d", len(c.consumer.Events()))
-			c.consumer.Close()
+			err := c.consumer.Close()
+			if err != nil {
+				c.log.Printf("Error closing: %s", err)
+			}
 			break Loop
 		case ev := <-c.consumer.Events():
 			switch e := ev.(type) {

@@ -91,7 +91,7 @@ func (s *Server) handleConn(conn net.Conn) {
 
 				select {
 				case <-s.ctx.Done():
-					ew = writer.WriteError("SHUTDOWN")
+					ew = writer.WriteError("SERVER SHUTDOWN")
 				case msg := <-c.Out():
 					ew = writer.WriteObjects(msgToRedis(msg)...)
 				case <-ticker.C:
@@ -121,7 +121,7 @@ func (s *Server) handleConn(conn net.Conn) {
 
 				// Ack
 				// TODO blocking?
-				err = c.Ack(topic, partition, offset)
+				err = c.CommitOffset(topic, partition, offset)
 				if err != nil {
 					ew = writer.WriteError(err.Error())
 					break
