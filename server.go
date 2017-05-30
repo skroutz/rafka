@@ -13,8 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	redisproto "github.com/secmask/go-redisproto"
+
 	// TODO(agis): get rid of this when we upgrade to 1.9
 	"golang.org/x/sync/syncmap"
 )
@@ -56,7 +57,7 @@ func (s *Server) handleConn(conn net.Conn) {
 		if err != nil {
 			_, ok := err.(*redisproto.ProtocolError)
 			if ok {
-				ew = writer.WriteError(err.Error())
+				ew = writer.WriteError("ERR " + err.Error())
 			} else {
 				s.log.Println(err, "closed connection to", client.id)
 				break
@@ -69,12 +70,12 @@ func (s *Server) handleConn(conn net.Conn) {
 			case "BLPOP":
 				topics, err := parseTopics(string(command.Get(1)))
 				if err != nil {
-					ew = writer.WriteError(err.Error())
+					ew = writer.WriteError("ERR " + err.Error())
 					break
 				}
 				c, err := client.Consumer(topics)
 				if err != nil {
-					ew = writer.WriteError(err.Error())
+					ew = writer.WriteError("ERR " + err.Error())
 					break
 				}
 
@@ -91,7 +92,7 @@ func (s *Server) handleConn(conn net.Conn) {
 
 				select {
 				case <-s.ctx.Done():
-					ew = writer.WriteError("SERVER SHUTDOWN")
+					ew = writer.WriteError("ERR server shutdown")
 				case msg := <-c.Out():
 					ew = writer.WriteObjects(msgToRedis(msg)...)
 				case <-ticker.C:
@@ -99,35 +100,26 @@ func (s *Server) handleConn(conn net.Conn) {
 					ew = writer.WriteBulk(nil)
 				}
 			case "RPUSH":
-				// Only allow rpush commits <ack>
 				key := strings.ToUpper(string(command.Get(1)))
 				if key != "ACKS" {
-					ew = writer.WriteError("ERR You can only push to the 'acks' key")
+					ew = writer.WriteError("ERR You can only RPUSH to the 'acks' key")
 					break
 				}
 
-				// Parse Ack
 				topic, partition, offset, err := parseAck(string(command.Get(2)))
 				if err != nil {
 					ew = writer.WriteError(err.Error())
 					break
 				}
-				// Get Consumer
+
 				c, err := client.ConsumerByTopic(topic)
 				if err != nil {
 					ew = writer.WriteError(err.Error())
 					break
 				}
 
-				// Ack
-				// TODO blocking?
-				err = c.CommitOffset(topic, partition, offset)
-				if err != nil {
-					ew = writer.WriteError(err.Error())
-					break
-				} else {
-					ew = writer.WriteBulkString("OK")
-				}
+				c.SetOffset(topic, partition, offset+1)
+				ew = writer.WriteBulkString("OK")
 			case "CLIENT":
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
@@ -157,7 +149,7 @@ func (s *Server) handleConn(conn net.Conn) {
 					ew = writer.WriteError("ERR syntax error")
 				}
 			default:
-				ew = writer.WriteError("Command not supported")
+				ew = writer.WriteError("ERR command not supported")
 			}
 		}
 		if command.IsLast() {
@@ -243,30 +235,29 @@ func parseTopics(key string) ([]string, error) {
 	}
 }
 
-func parseAck(ack string) (string, int32, int64, error) {
+func parseAck(ack string) (string, int32, rdkafka.Offset, error) {
 	parts := strings.SplitN(ack, ":", 3)
 	if len(parts) != 3 {
 		return "", 0, 0, fmt.Errorf("Cannot parse ack: '%s'", ack)
 	}
+
 	var err error
 
-	// Partition
 	partition64, err := strconv.ParseInt(parts[1], 10, 32)
 	if err != nil {
 		return "", 0, 0, err
 	}
 	partition := int32(partition64)
 
-	// Offset
-	offset, err := strconv.ParseInt(parts[2], 10, 64)
+	offset, err := strconv.ParseInt(parts[2], 0, 64)
 	if err != nil {
-		return "", 0, 0, err
+		return "", 0, rdkafka.Offset(0), err
 	}
 
-	return parts[0], partition, offset, nil
+	return parts[0], partition, rdkafka.Offset(offset), nil
 }
 
-func msgToRedis(msg *kafka.Message) []interface{} {
+func msgToRedis(msg *rdkafka.Message) []interface{} {
 	tp := msg.TopicPartition
 
 	return []interface{}{
