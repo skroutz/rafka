@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 
-	"golang.org/x/sync/syncmap"
 	"golang.skroutz.gr/skroutz/rafka/kafka"
 )
 
@@ -15,6 +15,7 @@ type Client struct {
 	id          string
 	consumerGID string
 	manager     *ConsumerManager
+	conn        net.Conn
 	log         *log.Logger
 	ready       bool
 
@@ -22,14 +23,15 @@ type Client struct {
 	byTopic   map[string]ConsumerID
 }
 
-func NewClient(cm *ConsumerManager) *Client {
-	c := Client{
+func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
+	logPrefix := fmt.Sprintf("[client-%s] ", conn.RemoteAddr().String())
+
+	return &Client{
 		manager:   cm,
 		consumers: make(map[ConsumerID]bool),
 		byTopic:   make(map[string]ConsumerID),
-		log:       log.New(os.Stderr, "[client] ", log.Ldate|log.Ltime)}
-
-	return &c
+		conn:      conn,
+		log:       log.New(os.Stderr, logPrefix, log.Ldate|log.Ltime)}
 }
 
 // SetID sets the id for c.
@@ -40,9 +42,9 @@ func (c *Client) SetID(id string) error {
 	if len(parts) != 2 {
 		return errors.New("Cannot parse group.id")
 	}
-
 	c.id = id
 	c.consumerGID = parts[0]
+	c.log.SetPrefix(fmt.Sprintf("[client-%s] ", id))
 	c.ready = true
 
 	return nil
@@ -89,13 +91,4 @@ func (c *Client) ConsumerByTopic(topic string) (*kafka.Consumer, error) {
 	}
 
 	return consumer, nil
-}
-
-func (c *Client) Teardown(clientIDs *syncmap.Map) {
-	for cid := range c.consumers {
-		c.log.Printf("[%s] Scheduling teardown for %s", c.id, cid)
-		c.manager.Delete(cid)
-	}
-
-	clientIDs.Delete(c.id)
 }

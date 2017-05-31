@@ -20,40 +20,38 @@ import (
 )
 
 type Server struct {
-	log       *log.Logger
-	manager   *ConsumerManager
-	ctx       context.Context
-	inFlight  sync.WaitGroup
-	timeout   time.Duration
-	clientIDs syncmap.Map
+	log        *log.Logger
+	manager    *ConsumerManager
+	ctx        context.Context
+	inFlight   sync.WaitGroup
+	timeout    time.Duration
+	clientByID syncmap.Map // map[string]*Client
 }
 
 func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Duration) *Server {
-	s := Server{
+	return &Server{
 		ctx:     ctx,
 		manager: manager,
 		timeout: timeout,
 		log:     log.New(os.Stderr, "[server] ", log.Ldate|log.Ltime),
 	}
-
-	return &s
 }
 
 func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close()
+	client := NewClient(conn, s.manager)
+	defer s.closeClient(client)
+
+	// TODO(agis): we shouldn't let duplicate tempIDs. We could append
+	// a random id and if it's already used, retry until we get a unique.
+	tempID := conn.RemoteAddr().String()
+	client.SetID(tempID)
+	s.clientByID.Store(tempID, client)
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
-	client := NewClient(s.manager)
-	defer client.Teardown(&s.clientIDs)
-
-	// Set a temporary ID
-	client.SetID(conn.RemoteAddr().String())
-
 	var ew error
 	for {
-		// TODO: is this blocking?
 		command, err := parser.ReadCommand()
 		if err != nil {
 			_, ok := err.(*redisproto.ProtocolError)
@@ -93,7 +91,7 @@ func (s *Server) handleConn(conn net.Conn) {
 
 				select {
 				case <-s.ctx.Done():
-					ew = writer.WriteError("SHUTDOWN")
+					ew = writer.WriteError("SERVER SHUTDOWN")
 				case msg := <-c.Out():
 					ew = writer.WriteObjects(msgToRedis(msg)...)
 				case <-ticker.C:
@@ -123,28 +121,22 @@ func (s *Server) handleConn(conn net.Conn) {
 
 				// Ack
 				// TODO blocking?
-				err = c.Ack(topic, partition, offset)
+				err = c.CommitOffset(topic, partition, offset)
 				if err != nil {
 					ew = writer.WriteError(err.Error())
 					break
 				} else {
 					ew = writer.WriteBulkString("OK")
 				}
-			case "DEL":
-				id := (ConsumerID)(command.Get(1))
-				deleted := s.manager.Delete(id)
-				if deleted {
-					ew = writer.WriteInt(1)
-				} else {
-					ew = writer.WriteInt(0)
-				}
 			case "CLIENT":
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
+				// TODO(agis) we should somehow make sure this
+				// can only be called once
 				case "SETNAME":
 					id := string(command.Get(2))
 
-					_, loaded := s.clientIDs.LoadOrStore(id, true)
+					_, loaded := s.clientByID.LoadOrStore(id, client)
 					if loaded {
 						ew = writer.WriteError(fmt.Sprintf("id %s is already taken", id))
 						break
@@ -152,11 +144,12 @@ func (s *Server) handleConn(conn net.Conn) {
 
 					err := client.SetID(id)
 					if err != nil {
-						s.clientIDs.Delete(id)
+						s.clientByID.Delete(id)
 						ew = writer.WriteError(err.Error())
 						break
 					}
 
+					s.clientByID.Delete(tempID)
 					ew = writer.WriteBulkString("OK")
 				case "GETNAME":
 					ew = writer.WriteBulkString(client.String())
@@ -183,11 +176,23 @@ func (s *Server) ListenAndServe(port string) error {
 		return err
 	}
 
-	// Unblock Accept()
+	// unblock Accept()
 	go func() {
 		<-s.ctx.Done()
 		s.log.Printf("Shutting down...")
 		listener.Close()
+
+		// close existing clients
+		closeFunc := func(id, client interface{}) bool {
+			c, ok := client.(*Client)
+			if !ok {
+				s.log.Printf("Couldn't convert %#v to Client", c)
+				return false
+			}
+			s.closeClient(c)
+			return true
+		}
+		s.clientByID.Range(closeFunc)
 	}()
 
 Loop:
@@ -213,9 +218,9 @@ Loop:
 		}
 	}
 
-	s.log.Println("Waiting for inflight connections...")
+	s.log.Println("Waiting for in-flight connections...")
 	s.inFlight.Wait()
-	s.log.Println("All connections handled, Bye!")
+	s.log.Println("All connections closed. Bye!")
 
 	return nil
 }
@@ -273,4 +278,19 @@ func msgToRedis(msg *kafka.Message) []interface{} {
 		int64(tp.Offset),
 		[]byte("value"),
 		msg.Value}
+}
+
+// closeClient closes c's underlying connection and also signals its consumers
+// to shutdown.
+func (s *Server) closeClient(c *Client) {
+	// We're fine with errors from Close() since we know it will happen that
+	// we attempt to close an already-closed connection (eg. the client
+	// closes it after we already deferred closeClient()).
+	c.conn.Close()
+
+	for cid := range c.consumers {
+		c.manager.ShutdownConsumer(cid)
+	}
+
+	s.clientByID.Delete(c.id)
 }

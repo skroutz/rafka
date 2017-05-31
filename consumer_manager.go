@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"sync"
-	"time"
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"golang.skroutz.gr/skroutz/rafka/kafka"
@@ -25,48 +24,42 @@ type ConsumerManager struct {
 	mu   sync.Mutex
 	pool consumerPool
 
-	log *log.Logger
-	wg  sync.WaitGroup
-	ctx context.Context
+	log         *log.Logger
+	consumersWg sync.WaitGroup
+	ctx         context.Context
 }
 
 func NewConsumerManager(ctx context.Context) *ConsumerManager {
-	c := ConsumerManager{
+	return &ConsumerManager{
 		log:  log.New(os.Stderr, "[manager] ", log.Ldate|log.Ltime),
 		pool: make(consumerPool),
 		ctx:  ctx,
 	}
-
-	return &c
 }
 
 func (m *ConsumerManager) Run() {
-	tickGC := time.NewTicker(10 * time.Second)
-	defer tickGC.Stop()
-
-	for {
-		select {
-		case <-m.ctx.Done():
-			m.log.Println("Shutting down...")
-			m.cleanup()
-			return
-		case <-tickGC.C:
-			m.reapStale()
-		}
-	}
+	<-m.ctx.Done()
+	m.log.Println("Waiting for all consumers to finish...")
+	m.consumersWg.Wait()
+	m.log.Println("All consumers shut down, bye!")
 }
 
+// Get returns a Kafka consumer associated with id, groupID and topics.
+// It creates a new one if none exists.
 func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *kafka.Consumer {
-	// Create consumer if it doesn't exist
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	if _, ok := m.pool[id]; !ok {
 		// Generate a new ConfigMap
 		// Copying/reusing the same between consumers seems
 		// to silently make the consumer non-operational.
 		cfg := make(rdkafka.ConfigMap)
 		for k, v := range kafkaCfg {
-			cfg[k] = v
+			err := cfg.SetKey(k, v)
+			if err != nil {
+				m.log.Printf("Error configuring consumer: %s", err)
+			}
 		}
 		cfg.SetKey("group.id", groupID)
 
@@ -76,10 +69,11 @@ func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *k
 			consumer: c,
 			cancel:   cancel,
 		}
+
 		m.log.Printf("Spawning Consumer %s config:%v", id, cfg)
-		m.wg.Add(1)
+		m.consumersWg.Add(1)
 		go func(ctx context.Context) {
-			defer m.wg.Done()
+			defer m.consumersWg.Done()
 			c.Run(ctx)
 		}(ctx)
 	}
@@ -99,50 +93,34 @@ func (m *ConsumerManager) ByID(id ConsumerID) (*kafka.Consumer, error) {
 	return entry.consumer, nil
 }
 
-func (m *ConsumerManager) Delete(id ConsumerID) bool {
+// ShutdownConsumer signals the consumer denoted by id to shutdown. It returns
+// false if no consumer was found.
+//
+// It does not block until the consumer is actually closed (this is instead
+// done when ConsumerManager is closed).
+func (m *ConsumerManager) ShutdownConsumer(id ConsumerID) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	e, ok := m.pool[id]
-	if !ok { // No consumer with that ID
+	c, ok := m.pool[id]
+	if !ok {
 		return false
 	}
 
+	m.log.Printf("Shutting down consumer %s...", id)
 	delete(m.pool, id)
+
 	// We don't block waiting for the consumer to finish. Perhaps we should.
 	//
 	// To our defense, when the Manager is stopped it will be wait for all
 	// consumers to gracefully stop due the m.wg WaitGroup.
-
+	//
 	// TODO we might end up with two consumers with the same
 	// configration if a new Get() instanciates a new consumer
 	// before the old one is destroyed. We need to investigate
 	// if that's something to worry about. We could also make
 	// consumer destroy sync and be done with it.
-	e.cancel()
+	c.cancel()
+
 	return true
-}
-
-func (m *ConsumerManager) cleanup() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	for id, entry := range m.pool {
-		m.log.Printf("Terminating consumer %s", id)
-		entry.cancel()
-	}
-
-	m.log.Println("Waiting all consumers to finish...")
-	m.wg.Wait()
-	m.log.Println("All consumers shut down, bye!")
-}
-
-func (m *ConsumerManager) reapStale() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for id := range m.pool {
-		// TODO actual cleanup
-		m.log.Printf("Cleaning up: %s", id)
-	}
-	return
 }

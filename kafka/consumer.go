@@ -7,28 +7,27 @@ import (
 	"os"
 	"sync"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 type Consumer struct {
 	id       string
-	consumer *kafka.Consumer
+	consumer *rdkafka.Consumer
 	topics   []string
-	out      chan *kafka.Message
+	out      chan *rdkafka.Message
 	log      *log.Logger
 }
 
-func NewConsumer(id string, topics []string, cfg *kafka.ConfigMap) *Consumer {
+func NewConsumer(id string, topics []string, cfg *rdkafka.ConfigMap) *Consumer {
 	var err error
 
-	logPrefix := fmt.Sprintf("[consumer] [%s] ", id)
 	c := Consumer{
 		id:     id,
 		topics: topics,
-		log:    log.New(os.Stderr, logPrefix, log.Ldate|log.Ltime),
-		out:    make(chan *kafka.Message)}
+		log:    log.New(os.Stderr, fmt.Sprintf("[consumer] [%s] ", id), log.Ldate|log.Ltime),
+		out:    make(chan *rdkafka.Message)}
 
-	c.consumer, err = kafka.NewConsumer(cfg)
+	c.consumer, err = rdkafka.NewConsumer(cfg)
 	if err != nil {
 		// TODO should be fatal?
 		c.log.Fatal(err)
@@ -37,17 +36,17 @@ func NewConsumer(id string, topics []string, cfg *kafka.ConfigMap) *Consumer {
 	return &c
 }
 
-func (c *Consumer) Out() <-chan *kafka.Message {
+func (c *Consumer) Out() <-chan *rdkafka.Message {
 	return c.out
 }
 
-func (c *Consumer) Ack(topic string, partition int32, offset int64) error {
-	tp := kafka.TopicPartition{
+func (c *Consumer) CommitOffset(topic string, partition int32, offset int64) error {
+	tp := rdkafka.TopicPartition{
 		Topic:     &topic,
 		Partition: partition,
-		Offset:    kafka.Offset(offset)}
+		Offset:    rdkafka.Offset(offset)}
 
-	offsets := []kafka.TopicPartition{tp}
+	offsets := []rdkafka.TopicPartition{tp}
 	// This is the message offset, we need to point the consumer to the next
 	// message.
 	offsets[0].Offset++
@@ -84,17 +83,20 @@ Loop:
 		case <-ctx.Done():
 			c.log.Println("Closing consumer...")
 			c.log.Printf("Unhandled (no worries) kafka Events(): %d", len(c.consumer.Events()))
-			c.consumer.Close()
+			err := c.consumer.Close()
+			if err != nil {
+				c.log.Printf("Error closing: %s", err)
+			}
 			break Loop
 		case ev := <-c.consumer.Events():
 			switch e := ev.(type) {
-			case kafka.AssignedPartitions:
+			case rdkafka.AssignedPartitions:
 				c.log.Printf("%% %v\n", e)
 				c.consumer.Assign(e.Partitions)
-			case kafka.RevokedPartitions:
+			case rdkafka.RevokedPartitions:
 				c.log.Printf("%% %v\n", e)
 				c.consumer.Unassign()
-			case *kafka.Message:
+			case *rdkafka.Message:
 				msg := string(e.Value)
 				// We cannot block on c.out, we need to make sure
 				// that we ctx.Done() is propagated correctly.
@@ -107,10 +109,10 @@ Loop:
 					c.log.Printf("%% Message on %s:\n%s\n",
 						e.TopicPartition, msg)
 				}
-			case kafka.PartitionEOF:
+			case rdkafka.PartitionEOF:
 				// TODO
 				// c.log.Printf("%% Reached %v\n", e)
-			case kafka.Error:
+			case rdkafka.Error:
 				// TODO Handle gracefully?
 				c.log.Printf("%% Error: %v\n", e)
 				break Loop
