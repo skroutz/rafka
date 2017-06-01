@@ -24,14 +24,15 @@ type Client struct {
 }
 
 func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
-	logPrefix := fmt.Sprintf("[client-%s] ", conn.RemoteAddr().String())
+	id := conn.RemoteAddr().String()
 
 	return &Client{
+		id:        id,
 		manager:   cm,
 		consumers: make(map[ConsumerID]bool),
 		byTopic:   make(map[string]ConsumerID),
 		conn:      conn,
-		log:       log.New(os.Stderr, logPrefix, log.Ldate|log.Ltime)}
+		log:       log.New(os.Stderr, fmt.Sprintf("[client-%s] ", id), log.Ldate|log.Ltime)}
 }
 
 // SetID sets the id for c.
@@ -60,7 +61,7 @@ func (c *Client) String() string {
 
 func (c *Client) Consumer(topics []string) (*kafka.Consumer, error) {
 	if !c.ready {
-		return nil, errors.New("Connection is not ready, please identify before using")
+		return nil, errors.New("Connection not ready. Identify yourself using `CLIENT SETNAME` first")
 	}
 
 	consumerID := ConsumerID(fmt.Sprintf("%s|%s", c.id, strings.Join(topics, ",")))

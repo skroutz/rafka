@@ -21,12 +21,15 @@ import (
 )
 
 type Server struct {
-	log        *log.Logger
-	manager    *ConsumerManager
-	ctx        context.Context
-	inFlight   sync.WaitGroup
-	timeout    time.Duration
-	clientByID syncmap.Map // map[string]*Client
+	log      *log.Logger
+	manager  *ConsumerManager
+	ctx      context.Context
+	inFlight sync.WaitGroup
+	timeout  time.Duration
+
+	// clientByID contains the currently connected clients to the server.
+	// It's essentially a map[string]*Client
+	clientByID syncmap.Map
 }
 
 func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Duration) *Server {
@@ -40,13 +43,8 @@ func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Durat
 
 func (s *Server) handleConn(conn net.Conn) {
 	client := NewClient(conn, s.manager)
+	s.clientByID.Store(client.id, client)
 	defer s.closeClient(client)
-
-	// TODO(agis): we shouldn't let duplicate tempIDs. We could append
-	// a random id and if it's already used, retry until we get a unique.
-	tempID := conn.RemoteAddr().String()
-	client.SetID(tempID)
-	s.clientByID.Store(tempID, client)
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
@@ -79,7 +77,7 @@ func (s *Server) handleConn(conn net.Conn) {
 					break
 				}
 
-				// Setup Timeout
+				// Setup timeout
 				// Check the last argument for an int or use the default.
 				// We do not support 0 as inf.
 				timeout := s.timeout
@@ -96,7 +94,6 @@ func (s *Server) handleConn(conn net.Conn) {
 				case msg := <-c.Out():
 					ew = writer.WriteObjects(msgToRedis(msg)...)
 				case <-ticker.C:
-					// BLPOP returns nil on timeout
 					ew = writer.WriteBulk(nil)
 				}
 			case "RPUSH":
@@ -123,30 +120,28 @@ func (s *Server) handleConn(conn net.Conn) {
 			case "CLIENT":
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
-				// TODO(agis) we should somehow make sure this
-				// can only be called once
 				case "SETNAME":
-					id := string(command.Get(2))
+					prevID := client.id
+					newID := string(command.Get(2))
 
-					_, loaded := s.clientByID.LoadOrStore(id, client)
-					if loaded {
-						ew = writer.WriteError(fmt.Sprintf("id %s is already taken", id))
+					_, ok := s.clientByID.Load(newID)
+					if ok {
+						ew = writer.WriteError(fmt.Sprintf("id %s is already taken", newID))
 						break
 					}
 
-					err := client.SetID(id)
+					err := client.SetID(newID)
 					if err != nil {
-						s.clientByID.Delete(id)
 						ew = writer.WriteError(err.Error())
 						break
 					}
-
-					s.clientByID.Delete(tempID)
+					s.clientByID.Store(newID, client)
+					s.clientByID.Delete(prevID)
 					ew = writer.WriteBulkString("OK")
 				case "GETNAME":
 					ew = writer.WriteBulkString(client.String())
 				default:
-					ew = writer.WriteError("ERR syntax error")
+					ew = writer.WriteError("ERR command not supported")
 				}
 			default:
 				ew = writer.WriteError("ERR command not supported")
