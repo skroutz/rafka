@@ -7,8 +7,6 @@ import (
 	"net"
 	"os"
 	"strings"
-
-	"golang.skroutz.gr/skroutz/rafka/kafka"
 )
 
 type Client struct {
@@ -59,7 +57,7 @@ func (c *Client) String() string {
 	return c.id
 }
 
-func (c *Client) Consumer(topics []string) (*kafka.Consumer, error) {
+func (c *Client) Consumer(topics []string) (*Consumer, error) {
 	if !c.ready {
 		return nil, errors.New("Connection not ready. Identify yourself using `CLIENT SETNAME` first")
 	}
@@ -84,7 +82,7 @@ func (c *Client) Consumer(topics []string) (*kafka.Consumer, error) {
 	return c.manager.Get(consumerID, c.consumerGID, topics), nil
 }
 
-func (c *Client) ConsumerByTopic(topic string) (*kafka.Consumer, error) {
+func (c *Client) ConsumerByTopic(topic string) (*Consumer, error) {
 	consumerID, ok := c.byTopic[topic]
 	if !ok {
 		return nil, fmt.Errorf("No consumer for topic %s", topic)

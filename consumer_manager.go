@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
-	"golang.skroutz.gr/skroutz/rafka/kafka"
 )
 
 type consumerPool map[ConsumerID]*consumerPoolEntry
@@ -16,7 +15,7 @@ type consumerPool map[ConsumerID]*consumerPoolEntry
 type ConsumerID string
 
 type consumerPoolEntry struct {
-	consumer *kafka.Consumer
+	consumer *Consumer
 	cancel   context.CancelFunc
 }
 
@@ -47,7 +46,7 @@ func (m *ConsumerManager) Run() {
 
 // Get returns a Kafka consumer associated with id, groupID and topics.
 // It creates a new one if none exists.
-func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *kafka.Consumer {
+func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *Consumer {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -66,7 +65,7 @@ func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *k
 			m.log.Printf("Error configuring consumer: %s", err)
 		}
 
-		c := kafka.NewConsumer(string(id), topics, m.cfg.CommitIntvl, kafkaCfg)
+		c := NewConsumer(string(id), topics, m.cfg.CommitIntvl, kafkaCfg)
 		ctx, cancel := context.WithCancel(m.ctx)
 		m.pool[id] = &consumerPoolEntry{
 			consumer: c,
@@ -84,7 +83,7 @@ func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *k
 	return m.pool[id].consumer
 }
 
-func (m *ConsumerManager) ByID(id ConsumerID) (*kafka.Consumer, error) {
+func (m *ConsumerManager) ByID(id ConsumerID) (*Consumer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
