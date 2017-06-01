@@ -38,6 +38,10 @@ func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
 //
 // It returns an error if id is not in the form of "<group.id>:<client-name>".
 func (c *Client) SetID(id string) error {
+	if c.ready {
+		return errors.New("Client id is already set to " + c.id)
+	}
+
 	parts := strings.SplitN(id, ":", 2)
 	if len(parts) != 2 {
 		return errors.New("Cannot parse group.id")
