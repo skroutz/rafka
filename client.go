@@ -7,8 +7,6 @@ import (
 	"net"
 	"os"
 	"strings"
-
-	"golang.skroutz.gr/skroutz/rafka/kafka"
 )
 
 type Client struct {
@@ -24,20 +22,25 @@ type Client struct {
 }
 
 func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
-	logPrefix := fmt.Sprintf("[client-%s] ", conn.RemoteAddr().String())
+	id := conn.RemoteAddr().String()
 
 	return &Client{
+		id:        id,
 		manager:   cm,
 		consumers: make(map[ConsumerID]bool),
 		byTopic:   make(map[string]ConsumerID),
 		conn:      conn,
-		log:       log.New(os.Stderr, logPrefix, log.Ldate|log.Ltime)}
+		log:       log.New(os.Stderr, fmt.Sprintf("[client-%s] ", id), log.Ldate|log.Ltime)}
 }
 
 // SetID sets the id for c.
 //
 // It returns an error if id is not in the form of "<group.id>:<client-name>".
 func (c *Client) SetID(id string) error {
+	if c.ready {
+		return errors.New("Client id is already set to " + c.id)
+	}
+
 	parts := strings.SplitN(id, ":", 2)
 	if len(parts) != 2 {
 		return errors.New("Cannot parse group.id")
@@ -54,9 +57,9 @@ func (c *Client) String() string {
 	return c.id
 }
 
-func (c *Client) Consumer(topics []string) (*kafka.Consumer, error) {
+func (c *Client) Consumer(topics []string) (*Consumer, error) {
 	if !c.ready {
-		return nil, errors.New("Connection is not ready, please identify before using")
+		return nil, errors.New("Connection not ready. Identify yourself using `CLIENT SETNAME` first")
 	}
 
 	consumerID := ConsumerID(fmt.Sprintf("%s|%s", c.id, strings.Join(topics, ",")))
@@ -79,7 +82,7 @@ func (c *Client) Consumer(topics []string) (*kafka.Consumer, error) {
 	return c.manager.Get(consumerID, c.consumerGID, topics), nil
 }
 
-func (c *Client) ConsumerByTopic(topic string) (*kafka.Consumer, error) {
+func (c *Client) ConsumerByTopic(topic string) (*Consumer, error) {
 	consumerID, ok := c.byTopic[topic]
 	if !ok {
 		return nil, fmt.Errorf("No consumer for topic %s", topic)

@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
-	"golang.skroutz.gr/skroutz/rafka/kafka"
 )
 
 type consumerPool map[ConsumerID]*consumerPoolEntry
@@ -16,7 +15,7 @@ type consumerPool map[ConsumerID]*consumerPoolEntry
 type ConsumerID string
 
 type consumerPoolEntry struct {
-	consumer *kafka.Consumer
+	consumer *Consumer
 	cancel   context.CancelFunc
 }
 
@@ -27,14 +26,15 @@ type ConsumerManager struct {
 	log         *log.Logger
 	consumersWg sync.WaitGroup
 	ctx         context.Context
+	cfg         Config
 }
 
-func NewConsumerManager(ctx context.Context) *ConsumerManager {
+func NewConsumerManager(ctx context.Context, cfg Config) *ConsumerManager {
 	return &ConsumerManager{
 		log:  log.New(os.Stderr, "[manager] ", log.Ldate|log.Ltime),
 		pool: make(consumerPool),
 		ctx:  ctx,
-	}
+		cfg:  cfg}
 }
 
 func (m *ConsumerManager) Run() {
@@ -46,31 +46,33 @@ func (m *ConsumerManager) Run() {
 
 // Get returns a Kafka consumer associated with id, groupID and topics.
 // It creates a new one if none exists.
-func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *kafka.Consumer {
+func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *Consumer {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if _, ok := m.pool[id]; !ok {
-		// Generate a new ConfigMap
-		// Copying/reusing the same between consumers seems
-		// to silently make the consumer non-operational.
-		cfg := make(rdkafka.ConfigMap)
-		for k, v := range kafkaCfg {
-			err := cfg.SetKey(k, v)
+		// apparently, reusing the same config between consumers
+		// silently makes them non-operational
+		kafkaCfg := rdkafka.ConfigMap{}
+		for k, v := range m.cfg.Librdkafka {
+			err := kafkaCfg.SetKey(k, v)
 			if err != nil {
 				m.log.Printf("Error configuring consumer: %s", err)
 			}
 		}
-		cfg.SetKey("group.id", groupID)
+		err := kafkaCfg.SetKey("group.id", groupID)
+		if err != nil {
+			m.log.Printf("Error configuring consumer: %s", err)
+		}
 
-		c := kafka.NewConsumer(string(id), topics, &cfg)
+		c := NewConsumer(string(id), topics, m.cfg.CommitIntvl, kafkaCfg)
 		ctx, cancel := context.WithCancel(m.ctx)
 		m.pool[id] = &consumerPoolEntry{
 			consumer: c,
 			cancel:   cancel,
 		}
 
-		m.log.Printf("Spawning Consumer %s config:%v", id, cfg)
+		m.log.Printf("Spawning consumer %s | config:%v", id, m.cfg)
 		m.consumersWg.Add(1)
 		go func(ctx context.Context) {
 			defer m.consumersWg.Done()
@@ -81,7 +83,7 @@ func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *k
 	return m.pool[id].consumer
 }
 
-func (m *ConsumerManager) ByID(id ConsumerID) (*kafka.Consumer, error) {
+func (m *ConsumerManager) ByID(id ConsumerID) (*Consumer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

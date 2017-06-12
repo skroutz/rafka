@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -10,17 +12,10 @@ import (
 	"syscall"
 	"time"
 
-	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/urfave/cli"
 )
 
-// TODO(agis): This is not used anywhere. Either use it or get rid of it.
-type Consumer interface {
-	Messages() chan<- struct{}
-	Run()
-}
-
-var kafkaCfg rdkafka.ConfigMap
+var cfg Config
 
 func main() {
 	app := cli.NewApp()
@@ -29,19 +24,19 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "consumer,c",
-			Usage: "Consumer type (kafka,dummy)",
+			Name:  "kafka, k",
+			Usage: "Load librdkafka configuration from `FILE`",
 		},
-		cli.StringFlag{
-			Name:  "kafka,k",
-			Value: "",
-			Usage: "librdkafka configuration `FILE`",
+		cli.Int64Flag{
+			Name:  "commit-intvl, i",
+			Usage: "Commit offsets of each consumer every `N` seconds",
+			Value: 10,
 		},
 	}
 
 	app.Before = func(c *cli.Context) error {
 		if c.String("kafka") == "" {
-			return cli.NewExitError("No kafka configuration!", 1)
+			return cli.NewExitError("No librdkafka configuration provided!", 1)
 		}
 
 		f, err := os.Open(c.String("kafka"))
@@ -52,9 +47,36 @@ func main() {
 
 		dec := json.NewDecoder(f)
 		dec.UseNumber()
-		err = dec.Decode(&kafkaCfg)
+		err = dec.Decode(&cfg)
 		if err != nil {
 			return err
+		}
+
+		if c.Int64("commit-intvl") <= 0 {
+			return errors.New("`commit-intvl` option must be greater than 0")
+		}
+		cfg.CommitIntvl = time.Duration(c.Int64("commit-intvl"))
+
+		// republish config using rdkafka.SetKey() for proper error
+		// checking
+		for k, v := range cfg.Librdkafka {
+			err = cfg.Librdkafka.SetKey(k, v)
+			if err != nil {
+				return errors.New(fmt.Sprintf("Error in librdkafka config: %s", err))
+			}
+		}
+
+		chSizeNumber, ok := cfg.Librdkafka["go.events.channel.size"].(json.Number)
+		if !ok {
+			return errors.New("Error converting go.events.channel.size")
+		}
+		chSize, err := chSizeNumber.Int64()
+		if err != nil {
+			return errors.New(fmt.Sprintf("Error converting go.events.channel.size: %s", err))
+		}
+		err = cfg.Librdkafka.SetKey("go.events.channel.size", int(chSize))
+		if err != nil {
+			return errors.New(fmt.Sprintf("Error setting go.events.channel.size: %s", err))
 		}
 
 		return nil
@@ -79,7 +101,7 @@ func run(c *cli.Context) {
 	l.Println("Spawning Consumer Manager")
 	var managerWg sync.WaitGroup
 	managerCtx, managerCancel := context.WithCancel(ctx)
-	manager := NewConsumerManager(managerCtx)
+	manager := NewConsumerManager(managerCtx, cfg)
 
 	managerWg.Add(1)
 	go func() {

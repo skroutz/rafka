@@ -2,6 +2,10 @@
 
 `rafka` acts a gateway service and exposes Kafka using the redis protocol.
 
+## Status
+
+This project is under heavy development and the [protocol](https://github.skroutz.gr/skroutz/rafka/wiki/Protocol) is still in draft version.
+
 Why rafka?
 ----------
 
