@@ -54,7 +54,7 @@ func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *C
 		// apparently, reusing the same config between consumers
 		// silently makes them non-operational
 		kafkaCfg := rdkafka.ConfigMap{}
-		for k, v := range m.cfg.Librdkafka {
+		for k, v := range m.cfg.Librdkafka.Consumer {
 			err := kafkaCfg.SetKey(k, v)
 			if err != nil {
 				m.log.Printf("Error configuring consumer: %s", err)

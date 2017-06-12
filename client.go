@@ -10,35 +10,35 @@ import (
 )
 
 type Client struct {
-	id          string
-	consumerGID string
-	manager     *ConsumerManager
-	conn        net.Conn
-	log         *log.Logger
-	ready       bool
+	id   string
+	conn net.Conn
+	log  *log.Logger
 
-	consumers map[ConsumerID]bool
-	byTopic   map[string]ConsumerID
+	consManager *ConsumerManager
+	consGID     string
+	consReady   bool
+	consByTopic map[string]ConsumerID
+	consumers   map[ConsumerID]bool
+
+	producer *Producer
 }
 
 func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
 	id := conn.RemoteAddr().String()
-
 	return &Client{
-		id:        id,
-		manager:   cm,
-		consumers: make(map[ConsumerID]bool),
-		byTopic:   make(map[string]ConsumerID),
-		conn:      conn,
-		log:       log.New(os.Stderr, fmt.Sprintf("[client-%s] ", id), log.Ldate|log.Ltime)}
+		id:          id,
+		consManager: cm,
+		consumers:   make(map[ConsumerID]bool),
+		consByTopic: make(map[string]ConsumerID),
+		conn:        conn,
+		log:         log.New(os.Stderr, fmt.Sprintf("[client-%s] ", id), log.Ldate|log.Ltime)}
 }
 
-// SetID sets the id for c.
-//
-// It returns an error if id is not in the form of "<group.id>:<client-name>".
-func (c *Client) SetID(id string) error {
-	if c.ready {
-		return errors.New("Client id is already set to " + c.id)
+// SetClientID sets the id for c. It returns an error if id is not in the form
+// "<consumer-group>:<consumer-id>".
+func (c *Client) SetClientID(id string) error {
+	if c.consReady {
+		return errors.New("CLient ID is already set to " + c.id)
 	}
 
 	parts := strings.SplitN(id, ":", 2)
@@ -46,10 +46,9 @@ func (c *Client) SetID(id string) error {
 		return errors.New("Cannot parse group.id")
 	}
 	c.id = id
-	c.consumerGID = parts[0]
+	c.consGID = parts[0]
 	c.log.SetPrefix(fmt.Sprintf("[client-%s] ", id))
-	c.ready = true
-
+	c.consReady = true
 	return nil
 }
 
@@ -58,37 +57,35 @@ func (c *Client) String() string {
 }
 
 func (c *Client) Consumer(topics []string) (*Consumer, error) {
-	if !c.ready {
+	if !c.consReady {
 		return nil, errors.New("Connection not ready. Identify yourself using `CLIENT SETNAME` first")
 	}
 
-	consumerID := ConsumerID(fmt.Sprintf("%s|%s", c.id, strings.Join(topics, ",")))
+	consID := ConsumerID(fmt.Sprintf("%s|%s", c.id, strings.Join(topics, ",")))
 
-	// Check for topics that already have a consumer
 	for _, topic := range topics {
-		if existingID, ok := c.byTopic[topic]; ok {
-			if existingID != consumerID {
+		if existingID, ok := c.consByTopic[topic]; ok {
+			if existingID != consID {
 				return nil, fmt.Errorf("Topic %s has another consumer", topic)
 			}
 		}
 	}
 
-	// Register the Consumer
-	c.consumers[consumerID] = true
+	c.consumers[consID] = true
 	for _, topic := range topics {
-		c.byTopic[topic] = consumerID
+		c.consByTopic[topic] = consID
 	}
 
-	return c.manager.Get(consumerID, c.consumerGID, topics), nil
+	return c.consManager.Get(consID, c.consGID, topics), nil
 }
 
 func (c *Client) ConsumerByTopic(topic string) (*Consumer, error) {
-	consumerID, ok := c.byTopic[topic]
+	consumerID, ok := c.consByTopic[topic]
 	if !ok {
 		return nil, fmt.Errorf("No consumer for topic %s", topic)
 	}
 
-	consumer, err := c.manager.ByID(consumerID)
+	consumer, err := c.consManager.ByID(consumerID)
 	if err != nil {
 		return nil, err
 	}
