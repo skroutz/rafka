@@ -113,7 +113,7 @@ func run(c *cli.Context) {
 
 	ctx := context.Background()
 
-	l.Println("Spawning Consumer Manager")
+	l.Println("Spawning Consumer Manager...")
 	var managerWg sync.WaitGroup
 	managerCtx, managerCancel := context.WithCancel(ctx)
 	manager := NewConsumerManager(managerCtx, cfg)
@@ -124,7 +124,7 @@ func run(c *cli.Context) {
 		manager.Run()
 	}()
 
-	l.Println("Spawning server")
+	l.Println("Spawning server...")
 	var serverWg sync.WaitGroup
 	serverCtx, serverCancel := context.WithCancel(ctx)
 	rafka := NewServer(serverCtx, manager, 5*time.Second)

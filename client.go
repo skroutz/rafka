@@ -7,12 +7,16 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 )
 
 type Client struct {
 	id   string
 	conn net.Conn
 	log  *log.Logger
+
+	mu     *sync.Mutex
+	closed bool
 
 	consManager *ConsumerManager
 	consGID     string
@@ -27,11 +31,13 @@ func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
 	id := conn.RemoteAddr().String()
 	return &Client{
 		id:          id,
+		conn:        conn,
+		log:         log.New(os.Stderr, fmt.Sprintf("[client-%s] ", id), log.Ldate|log.Ltime),
+		mu:          &sync.Mutex{},
 		consManager: cm,
 		consumers:   make(map[ConsumerID]bool),
 		consByTopic: make(map[string]ConsumerID),
-		conn:        conn,
-		log:         log.New(os.Stderr, fmt.Sprintf("[client-%s] ", id), log.Ldate|log.Ltime)}
+	}
 }
 
 // SetClientID sets the id for c. It returns an error if id is not in the form

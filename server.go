@@ -24,8 +24,8 @@ import (
 type Server struct {
 	log      *log.Logger
 	manager  *ConsumerManager
-	ctx      context.Context
-	inFlight sync.WaitGroup
+	ctx      context.Context // TODO(agis): make this a function param
+	inFlight sync.WaitGroup  // TODO(agis): make this a local var
 	timeout  time.Duration
 
 	// clientByID contains the currently connected clients to the server.
@@ -42,10 +42,9 @@ func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Durat
 }
 
 func (s *Server) handleConn(conn net.Conn) {
-
 	c := NewClient(conn, s.manager)
-	s.clientByID.Store(c.id, c)
 	defer s.closeClient(c)
+	s.clientByID.Store(c.id, c)
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
@@ -58,7 +57,7 @@ func (s *Server) handleConn(conn net.Conn) {
 			if ok {
 				ew = writer.WriteError(err.Error())
 			} else {
-				s.log.Println(err, "closed connection to", c.id)
+				s.log.Println("Closed connection to ", c)
 				break
 			}
 		} else {
@@ -133,16 +132,13 @@ func (s *Server) handleConn(conn net.Conn) {
 				kafkaMsg := &rdkafka.Message{TopicPartition: tp, Value: command.Get(2)}
 
 				if c.producer == nil {
-					newProd, err := NewProducer(&cfg.Librdkafka.Producer)
+					newProd, err := NewProducer(s.ctx, &cfg.Librdkafka.Producer)
 					if err != nil {
 						ew = writer.WriteError("Could not create producer " + err.Error())
 						break
 					}
 					c.producer = newProd
-					var producerWg sync.WaitGroup
-					defer producerWg.Wait()
-					producerWg.Add(1)
-					go c.producer.Monitor(s.ctx, &producerWg)
+					go c.producer.Run()
 				}
 
 				err = c.producer.Produce(kafkaMsg)
@@ -224,7 +220,6 @@ func (s *Server) ListenAndServe(port string) error {
 		s.log.Printf("Shutting down...")
 		listener.Close()
 
-		// close existing clients
 		closeFunc := func(id, client interface{}) bool {
 			c, ok := client.(*Client)
 			if !ok {
@@ -321,17 +316,30 @@ func msgToRedis(msg *rdkafka.Message) []interface{} {
 		msg.Value}
 }
 
-// closeClient closes c's underlying connection and also signals its consumers
-// and producers to shutdown.
+// closeClient closes c's underlying connection and its consumers
+// and producers. It is a blocking operation.
 func (s *Server) closeClient(c *Client) {
-	// We're fine with errors from Close() since we know it will happen that
-	// we attempt to close an already-closed connection (eg. the client
+	// do not attempt to close already closed clients
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed {
+		return
+	}
+
+	// We're fine with errors from Close(); we know it will happen to
+	// attempt to close an already closed connection (eg. the client
 	// closes it after we already deferred closeClient()).
+	//
+	// This unblocks the parser's ReadCommand()
 	c.conn.Close()
 
 	for cid := range c.consumers {
 		c.consManager.ShutdownConsumer(cid)
 	}
 
+	if c.producer != nil {
+		c.producer.Close()
+	}
 	s.clientByID.Delete(c.id)
+	c.closed = true
 }
