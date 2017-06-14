@@ -83,7 +83,7 @@ func (s *Server) handleConn(conn net.Conn) {
 				lastIdx := command.ArgCount() - 1
 				secs, err := strconv.Atoi(string(command.Get(lastIdx)))
 				if err == nil {
-					timeout = time.Duration(secs) * time.Second
+					timeout = time.Duration(secs) * time.Millisecond
 				}
 				ticker := time.NewTicker(timeout)
 
