@@ -101,10 +101,12 @@ func (c *Client) ConsumerByTopic(topic string) (*Consumer, error) {
 // Producer returns c's producer. If c does not have a producer assigned yet,
 // a new one is created and assigned to it.
 func (c *Client) Producer(cfg *rdkafka.ConfigMap) (*Producer, error) {
+	var err error
+
 	if c.producer != nil {
 		return c.producer, nil
 	}
-	c.producer, err = rdkafka.NewProducer(cfg)
+	c.producer, err = NewProducer(cfg)
 	if err != nil {
 		return nil, err
 	}

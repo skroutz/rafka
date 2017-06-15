@@ -70,8 +70,9 @@ func (p *Producer) monitor() {
 			unflushed := p.rdProd.Flush(5000)
 			if unflushed > 0 {
 				p.log.Printf("Flush timeout: %d unflushed events", unflushed)
+			} else {
+				p.log.Printf("All messages flushed")
 			}
-			p.log.Printf("All messages flushed")
 			p.rdProd.Close()
 			for ev := range p.rdProd.Events() {
 				msg := ev.(*rdkafka.Message)

@@ -137,7 +137,7 @@ func (s *Server) handleConn(conn net.Conn) {
 					break
 				}
 
-				err = c.producer.Produce(kafkaMsg)
+				err = prod.Produce(kafkaMsg)
 				if err != nil {
 					ew = writer.WriteError("Could not produce message: " + err.Error())
 					break
