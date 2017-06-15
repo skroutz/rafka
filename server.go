@@ -138,7 +138,6 @@ func (s *Server) handleConn(conn net.Conn) {
 						break
 					}
 					c.producer = newProd
-					go c.producer.Run()
 				}
 
 				err = c.producer.Produce(kafkaMsg)
