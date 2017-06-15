@@ -43,7 +43,7 @@ func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Durat
 
 func (s *Server) handleConn(conn net.Conn) {
 	c := NewClient(conn, s.manager)
-	defer s.closeClient(c)
+	defer c.Close()
 	s.clientByID.Store(c.id, c)
 
 	parser := redisproto.NewParser(conn)
@@ -225,7 +225,12 @@ func (s *Server) ListenAndServe(port string) error {
 				s.log.Printf("Couldn't convert %#v to Client", c)
 				return false
 			}
-			s.closeClient(c)
+			// This ugliness is due to the go-redisproto parser's
+			// not having a selectable channel for reading input.
+			// We're stuck with blocking on ReadCommand() and
+			// unblocking it by closing the client's connection.
+			c.conn.Close()
+			s.clientByID.Delete(c.id)
 			return true
 		}
 		s.clientByID.Range(closeFunc)
@@ -313,32 +318,4 @@ func msgToRedis(msg *rdkafka.Message) []interface{} {
 		int64(tp.Offset),
 		[]byte("value"),
 		msg.Value}
-}
-
-// closeClient closes c's underlying connection and its consumers
-// and producers. It is a blocking operation.
-func (s *Server) closeClient(c *Client) {
-	// do not attempt to close already closed clients
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.closed {
-		return
-	}
-
-	// We're fine with errors from Close(); we know it will happen to
-	// attempt to close an already closed connection (eg. the client
-	// closes it after we already deferred closeClient()).
-	//
-	// This unblocks the parser's ReadCommand()
-	c.conn.Close()
-
-	for cid := range c.consumers {
-		c.consManager.ShutdownConsumer(cid)
-	}
-
-	if c.producer != nil {
-		c.producer.Close()
-	}
-	s.clientByID.Delete(c.id)
-	c.closed = true
 }

@@ -7,16 +7,12 @@ import (
 	"net"
 	"os"
 	"strings"
-	"sync"
 )
 
 type Client struct {
 	id   string
 	conn net.Conn
 	log  *log.Logger
-
-	mu     *sync.Mutex
-	closed bool
 
 	consManager *ConsumerManager
 	consGID     string
@@ -27,13 +23,14 @@ type Client struct {
 	producer *Producer
 }
 
+// NewClient returns a new client. After it's no longer needed, the client
+// should be closed with Close().
 func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
 	id := conn.RemoteAddr().String()
 	return &Client{
 		id:          id,
 		conn:        conn,
 		log:         log.New(os.Stderr, fmt.Sprintf("[client-%s] ", id), log.Ldate|log.Ltime),
-		mu:          &sync.Mutex{},
 		consManager: cm,
 		consumers:   make(map[ConsumerID]bool),
 		consByTopic: make(map[string]ConsumerID),
@@ -97,4 +94,17 @@ func (c *Client) ConsumerByTopic(topic string) (*Consumer, error) {
 	}
 
 	return consumer, nil
+}
+
+// Close closes c's underlying producers and consumers. Calling Close on
+// an already closed client will result in a panic.
+func (c *Client) Close() {
+	for cid := range c.consumers {
+		// TODO(agis): make this blocking
+		c.consManager.ShutdownConsumer(cid)
+	}
+
+	if c.producer != nil {
+		c.producer.Close()
+	}
 }
