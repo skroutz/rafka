@@ -72,7 +72,7 @@ connection closes, the consumers are destroyed too.
 Each connection first needs to identify itself by using `client setname
 <group.id>:<name>` and then it can begin processing messages by issuing `blpop`
 calls on the desired topics. Each message should be explicitly acknowledged
-so it can be commited to Kafka. Acks are `rpush`ed to the special `acks` key.
+so it can be committed to Kafka. Acks are `rpush`ed to the special `acks` key.
 
 
 
