@@ -131,13 +131,10 @@ func (s *Server) handleConn(conn net.Conn) {
 				tp := rdkafka.TopicPartition{Topic: &topic, Partition: rdkafka.PartitionAny}
 				kafkaMsg := &rdkafka.Message{TopicPartition: tp, Value: command.Get(2)}
 
-				if c.producer == nil {
-					newProd, err := NewProducer(&cfg.Librdkafka.Producer)
-					if err != nil {
-						ew = writer.WriteError("Could not create producer " + err.Error())
-						break
-					}
-					c.producer = newProd
+				prod, err := c.Producer(&cfg.Librdkafka.Producer)
+				if err != nil {
+					ew = writer.WriteError("Error spawning producer: " + err.Error())
+					break
 				}
 
 				err = c.producer.Produce(kafkaMsg)
@@ -148,7 +145,7 @@ func (s *Server) handleConn(conn net.Conn) {
 				ew = writer.WriteBulkString("OK")
 			case "DUMP": // flush (producer)
 				if c.producer == nil {
-					ew = writer.WriteError("No producer exists")
+					ew = writer.WriteBulkString("OK")
 					break
 				}
 
@@ -177,7 +174,7 @@ func (s *Server) handleConn(conn net.Conn) {
 						break
 					}
 
-					err := c.SetClientID(newID)
+					err := c.SetID(newID)
 					if err != nil {
 						ew = writer.WriteError(err.Error())
 						break

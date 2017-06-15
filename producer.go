@@ -13,8 +13,7 @@ type Producer struct {
 	log       *log.Logger
 	monitored bool
 
-	close chan struct{}
-	done  chan struct{}
+	close, done chan struct{}
 }
 
 func NewProducer(cfg *rdkafka.ConfigMap) (*Producer, error) {

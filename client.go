@@ -7,6 +7,8 @@ import (
 	"net"
 	"os"
 	"strings"
+
+	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 type Client struct {
@@ -37,9 +39,9 @@ func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
 	}
 }
 
-// SetClientID sets the id for c. It returns an error if id is not in the form
+// SetID sets the id for c. It returns an error if id is not in the form
 // "<consumer-group>:<consumer-id>".
-func (c *Client) SetClientID(id string) error {
+func (c *Client) SetID(id string) error {
 	if c.consReady {
 		return errors.New("CLient ID is already set to " + c.id)
 	}
@@ -94,6 +96,20 @@ func (c *Client) ConsumerByTopic(topic string) (*Consumer, error) {
 	}
 
 	return consumer, nil
+}
+
+// Producer returns c's producer. If c does not have a producer assigned yet,
+// a new one is created and assigned to it.
+func (c *Client) Producer(cfg *rdkafka.ConfigMap) (*Producer, error) {
+	if c.producer != nil {
+		return c.producer, nil
+	}
+	c.producer, err = rdkafka.NewProducer(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return c.producer, nil
+
 }
 
 // Close closes c's underlying producers and consumers. Calling Close on
