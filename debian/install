@@ -1,0 +1,3 @@
+#!/usr/bin/dh-exec
+kafka.json.sample => /etc/rafka/config.json
+

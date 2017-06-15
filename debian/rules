@@ -1,0 +1,7 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE=1
+export PATH := /usr/lib/go-1.8/bin:$(PATH)
+
+%:
+	dh $@ --buildsystem=golang --with=golang

@@ -1,0 +1,38 @@
+Source: rafka
+Section: misc
+Priority: extra
+Maintainer: Mpampis Kostas <charkost.rb@gmail.com>
+Build-Depends: debhelper (>= 10),
+               dh-golang,
+               dh-exec,
+               golang-1.8-go,
+               golang-github-confluentinc-confluent-kafka-go-dev,
+               golang-github-secmask-go-redisproto-dev,
+               golang-github-urfave-cli-dev,
+               golang-golang-x-sync-dev
+Standards-Version: 3.9.8
+Homepage: https://github.com/skroutz/rafka
+Vcs-Browser: https://github.com/skroutz/rafka
+Vcs-Git: https://github.com/skroutz/rafka -b debian/stretch
+XS-Go-Import-Path: github.com/skroutz/rafka
+
+Package: rafka
+Architecture: any
+Built-Using: ${misc:Built-Using}
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Kafka with a Redis API
+ Rafka acts as gateway service and exposes Kafka using the Redis protocol.
+ .
+ Using Kafka with languages that lack a reliable, solid Kafka driver
+ can be a problem for mission-critical applications.
+ .
+ The motivation for Rafka is the following:
+ .
+  - Hide Kafka low-level details from the application and provide sane
+    defaults. Backed by the excellent librdkafka.
+ .
+  - Use a Redis client instead of a Kafka client. This particularly useful
+    in languages that lack a proper Kafka driver or do not provide
+    concurrency primitives to implement buffering and other
+    optimizations. Furthermore, writing a proper Rafka client is much
+    easier than writing a Kafka client.

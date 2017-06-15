@@ -1,0 +1,18 @@
+[Unit]
+Description=Kafka with a Redis API
+After=network.target
+Documentation=https://github.com/skroutz/rafka
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/rafka
+ExecStart=/usr/bin/rafka --kafka /etc/rafka/config.json $ARGS
+User=rafka
+Group=rafka
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ReadOnlyPaths=/
+
+[Install]
+WantedBy=multi-user.target
