@@ -1,7 +1,7 @@
 {
  "general": {
    "api.version.request": true,
-   "bootstrap.servers": "kafka-a.vm.skroutz.gr,kafka-b.vm.skroutz.gr,kafka-c.vm.skroutz.gr",
+   "bootstrap.servers": "kafka-1.example.com,kafka-2.example.com",
    "session.timeout.ms": 6000,
    "log.connection.close": false
  },

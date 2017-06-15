@@ -2,16 +2,36 @@
 
 Rafka acts a gateway service and exposes Kafka using the Redis protocol.
 
-## Status
 
-This project is under heavy development and the [protocol](https://github.skroutz.gr/skroutz/rafka/wiki/Protocol) is still in draft version.
+
+
 
 Why rafka?
 ----------
-- Hide Kafka low-level details from the application & provide sane defaults.
+Using Kafka with languages that lack a reliable, solid Kafka driver can be a
+problem for mission-critical applications. At Skroutz we use Ruby and we faced
+this problem constantly.
+
+The motivation for Rafka is the following
+- Hide Kafka low-level details from the application and provide sane defaults.
+  Backed by the excellent [librdkafka](https://github.com/edenhill/librdkafka).
 - Use a Redis client instead of a Kafka client. This particularly useful
   in languages that lack a proper Kafka driver or do not provide
-  concurrency primitives to implement buffering & other optimizations.
+  concurrency primitives to implement buffering and other optimizations. Furthermore,
+  writing a proper Rafka client is much easier than writing a Kafka client.
+  (Such a driver is already a work-in-progress for Ruby and will be released
+  soon)
+
+
+
+
+## Status
+
+DISCLAIMER: This project is under heavy development and is _not_ recommended for use in
+production environments.
+
+
+
 
 Dependencies
 ------------
@@ -116,17 +136,20 @@ Example using Redis:
 "OK"
 ```
 
+
+
+
 Usage
 -----
 
 ```shell
-$ vim kafka.cfg # Add brokers
-$ go build && ./rafka -k ./kafka.cfg
-
+$ vim kafka.json.sample # Add brokers
+$ go build && ./rafka -k ./kafka.json.sample -i 10
 ```
 
-TODO
-----
-- Investigate a slow consumer scenario
-- Implement a thin Ruby Client on top of Redis
-- Proper tests
+
+
+License
+---------------------------------------
+Rafka is licensed under MIT. See [LICENSE](LICENSE).
+
