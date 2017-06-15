@@ -1,12 +1,17 @@
 {
- "librdkafka": {
+ "general": {
    "api.version.request": true,
-   "bootstrap.servers": "kafka-a.vm.skroutz.gr",
-   "log.connection.close": false,
+   "bootstrap.servers": "kafka-a.vm.skroutz.gr,kafka-b.vm.skroutz.gr,kafka-c.vm.skroutz.gr",
    "session.timeout.ms": 6000,
+   "log.connection.close": false
+ },
+ "consumer": {
    "go.events.channel.enable": true,
-   "go.application.rebalance.enable": false,
+   "go.application.rebalance.enable": true,
    "enable.auto.commit": false,
-   "debug": "cgrp,topic,protocol"
+   "auto.offset.reset": "latest"
+ },
+ "producer": {
+   "go.delivery.reports": true
  }
 }

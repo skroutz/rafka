@@ -54,7 +54,7 @@ func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *C
 		// apparently, reusing the same config between consumers
 		// silently makes them non-operational
 		kafkaCfg := rdkafka.ConfigMap{}
-		for k, v := range m.cfg.Librdkafka {
+		for k, v := range m.cfg.Librdkafka.Consumer {
 			err := kafkaCfg.SetKey(k, v)
 			if err != nil {
 				m.log.Printf("Error configuring consumer: %s", err)
@@ -118,7 +118,7 @@ func (m *ConsumerManager) ShutdownConsumer(id ConsumerID) bool {
 	// consumers to gracefully stop due the m.wg WaitGroup.
 	//
 	// TODO we might end up with two consumers with the same
-	// configration if a new Get() instanciates a new consumer
+	// configuration if a new Get() instasiates a new consumer
 	// before the old one is destroyed. We need to investigate
 	// if that's something to worry about. We could also make
 	// consumer destroy sync and be done with it.

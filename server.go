@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -23,13 +24,12 @@ import (
 type Server struct {
 	log      *log.Logger
 	manager  *ConsumerManager
-	ctx      context.Context
-	inFlight sync.WaitGroup
+	ctx      context.Context // TODO(agis): make this a function param
+	inFlight sync.WaitGroup  // TODO(agis): make this a local var
 	timeout  time.Duration
 
 	// clientByID contains the currently connected clients to the server.
-	// It's essentially a map[string]*Client
-	clientByID syncmap.Map
+	clientByID syncmap.Map // map[string]*Client
 }
 
 func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Duration) *Server {
@@ -42,9 +42,9 @@ func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Durat
 }
 
 func (s *Server) handleConn(conn net.Conn) {
-	client := NewClient(conn, s.manager)
-	s.clientByID.Store(client.id, client)
-	defer s.closeClient(client)
+	c := NewClient(conn, s.manager)
+	defer c.Close()
+	s.clientByID.Store(c.id, c)
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
@@ -55,25 +55,23 @@ func (s *Server) handleConn(conn net.Conn) {
 		if err != nil {
 			_, ok := err.(*redisproto.ProtocolError)
 			if ok {
-				ew = writer.WriteError("ERR " + err.Error())
+				ew = writer.WriteError(err.Error())
 			} else {
-				s.log.Println(err, "closed connection to", client.id)
+				s.log.Println("Closed connection to ", c)
 				break
 			}
 		} else {
 			cmd := strings.ToUpper(string(command.Get(0)))
 			switch cmd {
-			case "PING":
-				ew = writer.WriteBulkString("PONG")
-			case "BLPOP":
+			case "BLPOP": // consume
 				topics, err := parseTopics(string(command.Get(1)))
 				if err != nil {
-					ew = writer.WriteError("ERR " + err.Error())
+					ew = writer.WriteError(err.Error())
 					break
 				}
-				c, err := client.Consumer(topics)
+				cons, err := c.Consumer(topics)
 				if err != nil {
-					ew = writer.WriteError("ERR " + err.Error())
+					ew = writer.WriteError(err.Error())
 					break
 				}
 
@@ -84,22 +82,22 @@ func (s *Server) handleConn(conn net.Conn) {
 				lastIdx := command.ArgCount() - 1
 				secs, err := strconv.Atoi(string(command.Get(lastIdx)))
 				if err == nil {
-					timeout = time.Duration(secs) * time.Second
+					timeout = time.Duration(secs) * time.Millisecond
 				}
 				ticker := time.NewTicker(timeout)
 
 				select {
 				case <-s.ctx.Done():
-					ew = writer.WriteError("ERR server shutdown")
-				case msg := <-c.Out():
+					ew = writer.WriteError("Server shutdown")
+				case msg := <-cons.Out():
 					ew = writer.WriteObjects(msgToRedis(msg)...)
 				case <-ticker.C:
 					ew = writer.WriteBulk(nil)
 				}
-			case "RPUSH":
+			case "RPUSH": // ack (consumer)
 				key := strings.ToUpper(string(command.Get(1)))
 				if key != "ACKS" {
-					ew = writer.WriteError("ERR You can only RPUSH to the 'acks' key")
+					ew = writer.WriteError("You can only RPUSH to the 'acks' key")
 					break
 				}
 
@@ -109,19 +107,65 @@ func (s *Server) handleConn(conn net.Conn) {
 					break
 				}
 
-				c, err := client.ConsumerByTopic(topic)
+				cons, err := c.ConsumerByTopic(topic)
 				if err != nil {
 					ew = writer.WriteError(err.Error())
 					break
 				}
 
-				c.SetOffset(topic, partition, offset+1)
+				cons.SetOffset(topic, partition, offset+1)
 				ew = writer.WriteBulkString("OK")
+			case "RPUSHX": // produce
+				argc := command.ArgCount() - 1
+				if argc != 2 {
+					ew = writer.WriteError("RPUSHX accepts 2 arguments, got " + strconv.Itoa(argc))
+					break
+				}
+
+				parts := bytes.Split(command.Get(1), []byte(":"))
+				if len(parts) != 2 {
+					ew = writer.WriteError("First argument must be in the form of 'topics:<topic>'")
+					break
+				}
+				topic := string(parts[1])
+				tp := rdkafka.TopicPartition{Topic: &topic, Partition: rdkafka.PartitionAny}
+				kafkaMsg := &rdkafka.Message{TopicPartition: tp, Value: command.Get(2)}
+
+				prod, err := c.Producer(&cfg.Librdkafka.Producer)
+				if err != nil {
+					ew = writer.WriteError("Error spawning producer: " + err.Error())
+					break
+				}
+
+				err = c.producer.Produce(kafkaMsg)
+				if err != nil {
+					ew = writer.WriteError("Could not produce message: " + err.Error())
+					break
+				}
+				ew = writer.WriteBulkString("OK")
+			case "DUMP": // flush (producer)
+				if c.producer == nil {
+					ew = writer.WriteBulkString("OK")
+					break
+				}
+
+				argc := command.ArgCount() - 1
+				if argc != 1 {
+					ew = writer.WriteError("DUMP accepts 1 argument, got " + strconv.Itoa(argc))
+					break
+				}
+
+				timeoutMs, err := strconv.Atoi(string(command.Get(1)))
+				if err != nil {
+					ew = writer.WriteError("NaN")
+					break
+				}
+				ew = writer.WriteInt(int64(c.producer.Flush(timeoutMs)))
 			case "CLIENT":
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
 				case "SETNAME":
-					prevID := client.id
+					prevID := c.id
 					newID := string(command.Get(2))
 
 					_, ok := s.clientByID.Load(newID)
@@ -130,21 +174,23 @@ func (s *Server) handleConn(conn net.Conn) {
 						break
 					}
 
-					err := client.SetID(newID)
+					err := c.SetID(newID)
 					if err != nil {
 						ew = writer.WriteError(err.Error())
 						break
 					}
-					s.clientByID.Store(newID, client)
+					s.clientByID.Store(newID, c)
 					s.clientByID.Delete(prevID)
 					ew = writer.WriteBulkString("OK")
 				case "GETNAME":
-					ew = writer.WriteBulkString(client.String())
+					ew = writer.WriteBulkString(c.String())
 				default:
-					ew = writer.WriteError("ERR command not supported")
+					ew = writer.WriteError("Command not supported")
 				}
+			case "PING":
+				ew = writer.WriteBulkString("PONG")
 			default:
-				ew = writer.WriteError("ERR command not supported")
+				ew = writer.WriteError("Command not supported")
 			}
 		}
 		if command.IsLast() {
@@ -170,14 +216,18 @@ func (s *Server) ListenAndServe(port string) error {
 		s.log.Printf("Shutting down...")
 		listener.Close()
 
-		// close existing clients
 		closeFunc := func(id, client interface{}) bool {
 			c, ok := client.(*Client)
 			if !ok {
 				s.log.Printf("Couldn't convert %#v to Client", c)
 				return false
 			}
-			s.closeClient(c)
+			// This ugliness is due to the go-redisproto parser's
+			// not having a selectable channel for reading input.
+			// We're stuck with blocking on ReadCommand() and
+			// unblocking it by closing the client's connection.
+			c.conn.Close()
+			s.clientByID.Delete(c.id)
 			return true
 		}
 		s.clientByID.Range(closeFunc)
@@ -265,19 +315,4 @@ func msgToRedis(msg *rdkafka.Message) []interface{} {
 		int64(tp.Offset),
 		[]byte("value"),
 		msg.Value}
-}
-
-// closeClient closes c's underlying connection and also signals its consumers
-// to shutdown.
-func (s *Server) closeClient(c *Client) {
-	// We're fine with errors from Close() since we know it will happen that
-	// we attempt to close an already-closed connection (eg. the client
-	// closes it after we already deferred closeClient()).
-	c.conn.Close()
-
-	for cid := range c.consumers {
-		c.manager.ShutdownConsumer(cid)
-	}
-
-	s.clientByID.Delete(c.id)
 }

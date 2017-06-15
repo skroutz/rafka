@@ -87,7 +87,6 @@ func (c *Consumer) Run(ctx context.Context) {
 			case oe := <-c.offsetIn:
 				c.offsets[oe.tp] = oe.offset
 			case <-t.C:
-				fmt.Println("commiting offsets")
 				c.commitOffsets()
 			}
 		}
@@ -166,7 +165,7 @@ func (c *Consumer) commitOffsets() {
 			c.log.Printf("Error committing offset %+v: %s", off, err)
 			continue
 		}
-		c.log.Printf("commited offset %#v", rdkafkaTp)
+		c.log.Printf("Commited offset %#v", rdkafkaTp)
 		delete(c.offsets, tp)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/urfave/cli"
 )
 
@@ -47,7 +48,7 @@ func main() {
 
 		dec := json.NewDecoder(f)
 		dec.UseNumber()
-		err = dec.Decode(&cfg)
+		err = dec.Decode(&cfg.Librdkafka)
 		if err != nil {
 			return err
 		}
@@ -57,26 +58,40 @@ func main() {
 		}
 		cfg.CommitIntvl = time.Duration(c.Int64("commit-intvl"))
 
-		// republish config using rdkafka.SetKey() for proper error
-		// checking
-		for k, v := range cfg.Librdkafka {
-			err = cfg.Librdkafka.SetKey(k, v)
-			if err != nil {
-				return errors.New(fmt.Sprintf("Error in librdkafka config: %s", err))
+		// republish config using rdkafka.SetKey() for proper error checking
+		for _, config := range []rdkafka.ConfigMap{cfg.Librdkafka.Consumer, cfg.Librdkafka.Producer} {
+			// merge general configuration
+			for k, v := range cfg.Librdkafka.General {
+				if config[k] != nil {
+					continue
+				}
+				err = config.SetKey(k, v)
+				if err != nil {
+					return errors.New(fmt.Sprintf("Error in librdkafka config (%s): %s", k, err))
+				}
+			}
+
+			for k, v := range config {
+				err = config.SetKey(k, v)
+				if err != nil {
+					return errors.New(fmt.Sprintf("Error in librdkafka config (%s): %s", k, err))
+				}
 			}
 		}
 
-		chSizeNumber, ok := cfg.Librdkafka["go.events.channel.size"].(json.Number)
-		if !ok {
-			return errors.New("Error converting go.events.channel.size")
-		}
-		chSize, err := chSizeNumber.Int64()
-		if err != nil {
-			return errors.New(fmt.Sprintf("Error converting go.events.channel.size: %s", err))
-		}
-		err = cfg.Librdkafka.SetKey("go.events.channel.size", int(chSize))
-		if err != nil {
-			return errors.New(fmt.Sprintf("Error setting go.events.channel.size: %s", err))
+		if cfg.Librdkafka.Consumer["go.events.channel.size"] != nil {
+			chSizeNumber, ok := cfg.Librdkafka.Consumer["go.events.channel.size"].(json.Number)
+			if !ok {
+				return errors.New("Error converting go.events.channel.size to int")
+			}
+			chSize, err := chSizeNumber.Int64()
+			if err != nil {
+				return errors.New(fmt.Sprintf("Error converting go.events.channel.size to int: %s", err))
+			}
+			err = cfg.Librdkafka.Consumer.SetKey("go.events.channel.size", int(chSize))
+			if err != nil {
+				return errors.New(fmt.Sprintf("Error setting go.events.channel.size: %s", err))
+			}
 		}
 
 		return nil
@@ -98,7 +113,7 @@ func run(c *cli.Context) {
 
 	ctx := context.Background()
 
-	l.Println("Spawning Consumer Manager")
+	l.Println("Spawning Consumer Manager...")
 	var managerWg sync.WaitGroup
 	managerCtx, managerCancel := context.WithCancel(ctx)
 	manager := NewConsumerManager(managerCtx, cfg)
@@ -109,7 +124,7 @@ func run(c *cli.Context) {
 		manager.Run()
 	}()
 
-	l.Println("Spawning server")
+	l.Println("Spawning server...")
 	var serverWg sync.WaitGroup
 	serverCtx, serverCancel := context.WithCancel(ctx)
 	rafka := NewServer(serverCtx, manager, 5*time.Second)
