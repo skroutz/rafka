@@ -132,7 +132,7 @@ func (s *Server) handleConn(conn net.Conn) {
 				kafkaMsg := &rdkafka.Message{TopicPartition: tp, Value: command.Get(2)}
 
 				if c.producer == nil {
-					newProd, err := NewProducer(s.ctx, &cfg.Librdkafka.Producer)
+					newProd, err := NewProducer(&cfg.Librdkafka.Producer)
 					if err != nil {
 						ew = writer.WriteError("Could not create producer " + err.Error())
 						break

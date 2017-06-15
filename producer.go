@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -10,25 +9,22 @@ import (
 )
 
 type Producer struct {
-	ctx    context.Context
-	cancel func()
-
-	done      chan struct{}
 	rdProd    *rdkafka.Producer
 	log       *log.Logger
 	monitored bool
+
+	close chan struct{}
+	done  chan struct{}
 }
 
-func NewProducer(ctx context.Context, cfg *rdkafka.ConfigMap) (*Producer, error) {
+func NewProducer(cfg *rdkafka.ConfigMap) (*Producer, error) {
 	rdProd, err := rdkafka.NewProducer(cfg)
 	if err != nil {
 		return nil, err
 	}
-	newCtx, cancelFn := context.WithCancel(ctx)
 
 	return &Producer{
-		ctx:       newCtx,
-		cancel:    cancelFn,
+		close:     make(chan struct{}),
 		rdProd:    rdProd,
 		log:       log.New(os.Stderr, fmt.Sprintf("[%s] ", rdProd), log.Ldate|log.Ltime),
 		monitored: false,
@@ -60,7 +56,7 @@ func (p *Producer) Flush(timeoutMs int) int {
 // Close stops p after flushing any buffered messages. It is a blocking
 // operation.
 func (p *Producer) Close() {
-	p.cancel()
+	p.close <- struct{}{}
 	<-p.done
 	p.log.Print("Bye")
 }
@@ -69,7 +65,7 @@ func (p *Producer) Close() {
 func (p *Producer) monitor() {
 	for {
 		select {
-		case <-p.ctx.Done():
+		case <-p.close:
 			p.log.Print("Flushing and shutting down...")
 			// TODO(agis) make this configurable?
 			unflushed := p.rdProd.Flush(5000)
