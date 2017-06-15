@@ -23,7 +23,7 @@ Installation
 
 ```shell
 $ apt-get install golang librdkafka-dev
-$ go get -u golang.skroutz.gr/skroutz/rafka
+$ go get -u github.com/skroutz/rafka
 ```
 
 
