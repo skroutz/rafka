@@ -102,7 +102,6 @@ Loop:
 		select {
 		case <-ctx.Done():
 			c.log.Println("Closing consumer...")
-			c.log.Printf("Unhandled (no worries) kafka Events(): %d", len(c.consumer.Events()))
 			err := c.consumer.Close()
 			if err != nil {
 				c.log.Printf("Error closing: %s", err)
@@ -130,7 +129,7 @@ Loop:
 				// nothing to do in this case
 			case rdkafka.Error:
 				// TODO Handle gracefully?
-				c.log.Printf("%% Error: %v\n", e)
+				c.log.Printf("Error: %v\n", e)
 				break Loop
 			}
 		}

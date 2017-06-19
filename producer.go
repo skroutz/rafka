@@ -57,7 +57,7 @@ func (p *Producer) Flush(timeoutMs int) int {
 func (p *Producer) Close() {
 	p.close <- struct{}{}
 	<-p.done
-	p.log.Print("Bye")
+	p.log.Print("Bye!")
 }
 
 // monitor logs message delivery failures. It also cleans up when p is closed.
@@ -73,13 +73,15 @@ func (p *Producer) monitor() {
 			} else {
 				p.log.Printf("All messages flushed")
 			}
-			p.rdProd.Close()
-			for ev := range p.rdProd.Events() {
+			select {
+			case ev := <-p.rdProd.Events():
 				msg := ev.(*rdkafka.Message)
 				if err := msg.TopicPartition.Error; err != nil {
 					p.log.Printf("Failed to deliver %v", msg)
 				}
+			default:
 			}
+			p.rdProd.Close()
 			p.done <- struct{}{}
 			return
 		case ev := <-p.rdProd.Events():
