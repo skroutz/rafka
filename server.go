@@ -60,7 +60,7 @@ func (s *Server) handleConn(conn net.Conn) {
 			if ok {
 				ew = writer.WriteError(err.Error())
 			} else {
-				s.log.Println("Closed connection to ", c)
+				s.log.Println("Closed connection to", c)
 				break
 			}
 		} else {

@@ -111,13 +111,12 @@ Loop:
 		case ev := <-c.consumer.Events():
 			switch e := ev.(type) {
 			case rdkafka.AssignedPartitions:
-				c.log.Printf("%% %v\n", e)
+				c.log.Print(e)
 				c.consumer.Assign(e.Partitions)
 			case rdkafka.RevokedPartitions:
-				c.log.Printf("%% %v\n", e)
+				c.log.Print(e)
 				c.consumer.Unassign()
 			case *rdkafka.Message:
-				msg := string(e.Value)
 				// We cannot block on c.out, we need to make sure
 				// that we ctx.Done() is propagated correctly.
 				select {
@@ -126,12 +125,9 @@ Loop:
 					// the Done() will be dealt in the top level
 					// select {}.
 				case c.out <- e:
-					c.log.Printf("%% Message on %s:\n%s\n",
-						e.TopicPartition, msg)
 				}
 			case rdkafka.PartitionEOF:
-				// TODO
-				// c.log.Printf("%% Reached %v\n", e)
+				// nothing to do in this case
 			case rdkafka.Error:
 				// TODO Handle gracefully?
 				c.log.Printf("%% Error: %v\n", e)
