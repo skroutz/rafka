@@ -129,8 +129,10 @@ Loop:
 				// nothing to do in this case
 			case rdkafka.Error:
 				// TODO Handle gracefully?
-				c.log.Printf("Error: %v\n", e)
+				c.log.Printf("Error: %v", e)
 				break Loop
+			default:
+				c.log.Printf("Unhandled event: %v", e)
 			}
 		}
 	}
