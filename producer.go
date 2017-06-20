@@ -39,6 +39,7 @@ func (p *Producer) Produce(msg *rdkafka.Message) error {
 
 	err := p.rdProd.Produce(msg, nil)
 	if err != nil {
+		p.log.Printf("Error producing message: %s | %s", msg, err)
 		return err
 	}
 	return nil
