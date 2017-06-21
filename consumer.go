@@ -74,14 +74,13 @@ func (c *Consumer) Run(ctx context.Context) {
 	wg.Add(1)
 	go func(ctx context.Context) {
 		defer wg.Done()
-
 		t := time.NewTicker(c.commitIntvl * time.Second)
 		defer t.Stop()
-
 	Loop:
 		for {
 			select {
 			case <-ctx.Done():
+				c.log.Print("Commiting final offsets...")
 				c.commitOffsets()
 				break Loop
 			case oe := <-c.offsetIn:
@@ -93,6 +92,11 @@ func (c *Consumer) Run(ctx context.Context) {
 	}(ctx)
 
 	wg.Wait()
+	c.log.Print("Closing...")
+	err := c.consumer.Close()
+	if err != nil {
+		c.log.Printf("Error closing: %s", err)
+	}
 	c.log.Println("Bye!")
 }
 
@@ -101,11 +105,6 @@ Loop:
 	for {
 		select {
 		case <-ctx.Done():
-			c.log.Println("Closing consumer...")
-			err := c.consumer.Close()
-			if err != nil {
-				c.log.Printf("Error closing: %s", err)
-			}
 			break Loop
 		case ev := <-c.consumer.Events():
 			switch e := ev.(type) {
