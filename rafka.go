@@ -113,7 +113,8 @@ func run(c *cli.Context) {
 
 	ctx := context.Background()
 
-	l.Println("Spawning Consumer Manager...")
+	_, rdkafkaVer := rdkafka.LibraryVersion()
+	l.Printf("Spawning Consumer Manager (librdkafka %s)...", rdkafkaVer)
 	var managerWg sync.WaitGroup
 	managerCtx, managerCancel := context.WithCancel(ctx)
 	manager := NewConsumerManager(managerCtx, cfg)
@@ -124,7 +125,6 @@ func run(c *cli.Context) {
 		manager.Run()
 	}()
 
-	l.Println("Spawning server...")
 	var serverWg sync.WaitGroup
 	serverCtx, serverCancel := context.WithCancel(ctx)
 	rafka := NewServer(serverCtx, manager, 5*time.Second)
