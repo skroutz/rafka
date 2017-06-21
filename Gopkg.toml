@@ -1,0 +1,12 @@
+[[constraint]]
+  name = "github.com/confluentinc/confluent-kafka-go"
+  version = "v0.9.4"
+
+[[constraint]]
+  name = "github.com/urfave/cli"
+  version = "1.19.1"
+
+[[constraint]]
+  name = "github.com/secmask/go-redisproto"
+  revision = "14323b204640af1628764b06726c64fe040998e1"
+
