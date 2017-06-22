@@ -190,6 +190,10 @@ func (s *Server) handleConn(conn net.Conn) {
 				default:
 					ew = writer.WriteError("Command not supported")
 				}
+			case "QUIT":
+				writer.WriteBulkString("OK")
+				writer.Flush()
+				return
 			case "PING":
 				ew = writer.WriteBulkString("PONG")
 			default:

@@ -111,7 +111,9 @@ $ go build && ./rafka -k ./kafka.json.sample -i 10
 API
 ------------------------------------------------------------------------------
 Generic commands:
-- `PING`
+
+- [`PING`](https://redis.io/commands/ping) (no arguments)
+- [`QUIT`](https://redis.io/commands/quit)
 
 
 
