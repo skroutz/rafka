@@ -1,0 +1,11 @@
+Ιούν 22 17:04:09 kafka-a kafka-server-start[2856]: [2017-06-22 17:04:09,682] INFO [GroupCoordinator 1]: Preparing to restabilize group e202419dc5ec with old generation 0 (kafka.coordinator.GroupCoordinator)
+Ιούν 22 17:04:09 kafka-a kafka-server-start[2856]: [2017-06-22 17:04:09,683] INFO [GroupCoordinator 1]: Stabilized group e202419dc5ec generation 1 (kafka.coordinator.GroupCoordinator)
+Ιούν 22 17:04:09 kafka-a kafka-server-start[2856]: [2017-06-22 17:04:09,686] INFO [GroupCoordinator 1]: Assignment received from leader for group e202419dc5ec for generation 1 (kafka.coordinator.GroupCoordinator)
+
+
+Ιούν 22 17:04:19 kafka-a kafka-server-start[2856]: [2017-06-22 17:04:19,810] INFO [GroupCoordinator 1]: Preparing to restabilize group e202419dc5ec with old generation 1 (kafka.coordinator.GroupCoordinator)
+Ιούν 22 17:04:19 kafka-a kafka-server-start[2856]: [2017-06-22 17:04:19,810] INFO [GroupCoordinator 1]: Group e202419dc5ec with generation 2 is now empty (kafka.coordinator.GroupCoordinator)
+
+
+
+# SUCCESS

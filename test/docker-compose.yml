@@ -1,0 +1,15 @@
+version: '2'
+services:
+  rafka:
+    build:
+      context: .
+    hostname: rafka
+    volumes:
+      - ../:/rafka
+    ports:
+      - 6380:6380
+
+networks:
+  default:
+    external:
+      name: kafkacluster_default
