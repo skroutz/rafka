@@ -134,7 +134,7 @@ func run(c *cli.Context) {
 		defer serverWg.Done()
 		err := rafka.ListenAndServe(":6380")
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 
 	}()
