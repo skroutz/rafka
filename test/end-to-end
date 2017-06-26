@@ -9,7 +9,7 @@ $port = Integer($rafka[1])
 require "bundler/inline"
 gemfile(true) do
   source 'https://rubygems.org'
-  gem "rufka", git: "https://github.com/skroutz/rufka"
+  gem "rafka", git: "https://github.com/skroutz/rafka-rb"
   gem "minitest"
 end
 
@@ -21,9 +21,9 @@ class TestRafka < Minitest::Test
   CONSUME_RETRIES = 3
 
   def setup
-    @cons = Rufka::Consumer.new(host: $host, port: $port,
+    @cons = Rafka::Consumer.new(host: $host, port: $port,
       topic: TOPIC, group: "test-#{SecureRandom.hex(6)}", id: SecureRandom.hex(4))
-    @prod = Rufka::Producer.new(host: $host, port: $port)
+    @prod = Rafka::Producer.new(host: $host, port: $port)
   end
 
   def test_consume_single
@@ -62,8 +62,8 @@ class TestRafka < Minitest::Test
   # TODO: why this fails sometimes?
   def test_multiple_consumers_same_topic
     group_id = SecureRandom.hex(6)
-    cons1 = Rufka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons1")
-    cons2 = Rufka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons2")
+    cons1 = Rafka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons1")
+    cons2 = Rafka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons2")
     start_consumer!(cons1)
     start_consumer!(cons2)
 
@@ -95,8 +95,8 @@ class TestRafka < Minitest::Test
   # TODO: why this fails sometimes?
   def test_consumer_reassign
     group_id = SecureRandom.hex(6)
-    cons1 = Rufka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons1")
-    cons2 = Rufka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons2")
+    cons1 = Rafka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons1")
+    cons2 = Rafka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons2")
 
     start_consumer!(cons1)
     msg = SecureRandom.hex(4)
@@ -113,7 +113,7 @@ class TestRafka < Minitest::Test
 
   private
 
-  # @return [nil, Rufka::Message]
+  # @return [nil, Rafka::Message]
   def consume_with_retry(consumer)
     res = nil
     CONSUME_RETRIES.times do
@@ -138,7 +138,7 @@ class TestRafka < Minitest::Test
   end
 
   def assert_rafka_msg(msg)
-    assert_kind_of Rufka::Message, msg
+    assert_kind_of Rafka::Message, msg
   end
 
   def assert_rafka_msg_equal(exp, act, msg=nil)

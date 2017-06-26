@@ -1,5 +1,5 @@
 This directory contains Rafka's end-to-end tests. They test a full Rafka/Kafka
-cluster using the [Rufka](https://github.com/skroutz/rufka) driver.
+cluster using the [Rafka ruby driver](https://github.com/skroutz/rafka-rb).
 
 Dependencies:
 
