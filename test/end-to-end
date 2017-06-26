@@ -1,29 +1,29 @@
 #!/usr/bin/env ruby
 require "securerandom"
-require_relative "kafka_helpers"
+require "minitest/autorun"
+require_relative "test_helper"
 
-$rafka = (ENV["RAFKA"] || "localhost:6380").split(":")
-$host = $rafka[0]
-$port = Integer($rafka[1])
+rafka = (ENV["RAFKA"] || "localhost:6380").split(":")
+HOST, PORT = rafka[0], Integer(rafka[1])
+TOPIC = ENV["DOCKER"] ? "test-rafka-#{Time.now.to_i}-#{SecureRandom.hex(6)}" : "test-rafka"
+FLUSH_TIMEOUT = 5000
+CONSUME_RETRIES = 3
 
 require "bundler/inline"
 gemfile(true) do
   source 'https://rubygems.org'
   gem "rafka", git: "https://github.com/skroutz/rafka-rb"
   gem "minitest"
+  gem "pry-byebug"
 end
 
-require "minitest/autorun"
-
 class TestRafka < Minitest::Test
-  TOPIC = ENV["DOCKER"] ? "test-rafka-#{Time.now.to_i}-#{SecureRandom.hex(6)}" : "test-rafka"
-  FLUSH_TIMEOUT = 5000
-  CONSUME_RETRIES = 3
+  DEFAULTS = { host: HOST, port: PORT }
 
   def setup
-    @cons = Rafka::Consumer.new(host: $host, port: $port,
-      topic: TOPIC, group: "test-#{SecureRandom.hex(6)}", id: SecureRandom.hex(4))
-    @prod = Rafka::Producer.new(host: $host, port: $port)
+    @cons = Rafka::Consumer.new(DEFAULTS.merge(
+      topic: TOPIC, group: "test-#{SecureRandom.hex(6)}", id: SecureRandom.hex(4)))
+    @prod = Rafka::Producer.new(DEFAULTS)
   end
 
   def test_consume_single
@@ -59,11 +59,11 @@ class TestRafka < Minitest::Test
     assert_equal 0, @prod.flush(FLUSH_TIMEOUT)
   end
 
-  # TODO: why this fails sometimes?
+  # TODO(agis): fix occassional failures
   def test_multiple_consumers_same_topic
     group_id = SecureRandom.hex(6)
-    cons1 = Rafka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons1")
-    cons2 = Rafka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons2")
+    cons1 = Rafka::Consumer.new(DEFAULTS.merge(topic: TOPIC, group: group_id, id: "cons1"))
+    cons2 = Rafka::Consumer.new(DEFAULTS.merge(topic: TOPIC, group: group_id, id: "cons2"))
     start_consumer!(cons1)
     start_consumer!(cons2)
 
@@ -92,11 +92,11 @@ class TestRafka < Minitest::Test
     assert_equal msgs.sort, replies.sort
   end
 
-  # TODO: why this fails sometimes?
+  # TODO(agis): fix occassional failures
   def test_consumer_reassign
     group_id = SecureRandom.hex(6)
-    cons1 = Rafka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons1")
-    cons2 = Rafka::Consumer.new(host: $host, port: $port, topic: TOPIC, group: group_id, id: "cons2")
+    cons1 = Rafka::Consumer.new(DEFAULTS.merge(topic: TOPIC, group: group_id, id: "cons1"))
+    cons2 = Rafka::Consumer.new(DEFAULTS.merge(topic: TOPIC, group: group_id, id: "cons2"))
 
     start_consumer!(cons1)
     msg = SecureRandom.hex(4)
@@ -111,45 +111,34 @@ class TestRafka < Minitest::Test
     assert_rafka_msg_equal msg, consume_with_retry(cons2)
   end
 
-  private
+  def test_two_consumers_different_topics
+    cons2 = Rafka::Consumer.new(DEFAULTS.merge(topic: TOPIC+"-2", group: "asdf"))
+    start_consumer!(cons2)
+    start_consumer!(@cons)
 
-  # @return [nil, Rafka::Message]
-  def consume_with_retry(consumer)
-    res = nil
-    CONSUME_RETRIES.times do
-      res = consumer.consume(2)
-      return res if res
-    end
-    res
-  end
+    @prod.produce(TOPIC, "I'm Mr. Meeseeks")
+    @prod.produce(TOPIC+"-2", "Look at me")
+    flush!(@prod)
 
-  def produce_and_flush!(prod, topic, msg)
-    prod.produce(topic, msg)
-    flush!(prod)
-  end
+    assert_rafka_msg_equal "I'm Mr. Meeseeks", consume_with_retry(@cons)
+    assert_rafka_msg_equal "Look at me", consume_with_retry(cons2)
+  end if ENV["DOCKER"]
 
-  def flush!(prod)
-    unflushed = prod.flush(FLUSH_TIMEOUT)
-    flunk("#{unflushed} unflushed messages remained") if unflushed > 0
-  end
-
-  def start_consumer!(cons)
-    cons.consume(1)
-  end
-
-  def assert_rafka_msg(msg)
-    assert_kind_of Rafka::Message, msg
-  end
-
-  def assert_rafka_msg_equal(exp, act, msg=nil)
-    assert_rafka_msg(act)
-    assert_equal exp, act.value
+  def test_produce_wrong_topic
+    @prod.produce("idontexist", "foo")
+    binding.pry
+    1
   end
 end
 
-puts "\nRunning tests on #$host:#$port (CONSUME_RETRIES=#{TestRafka::CONSUME_RETRIES})..."
+puts "\nRunning tests on #{HOST}:#{PORT} (CONSUME_RETRIES=#{CONSUME_RETRIES})..."
 
 if ENV["DOCKER"]
-  create_topic!(TestRafka::TOPIC, partitions: 4, replication_factor: 2)
-  MiniTest.after_run { delete_topic!(TestRafka::TOPIC) }
+  create_kafka_topic!(TOPIC, partitions: 4, replication_factor: 2)
+  create_kafka_topic!(TOPIC+"-2", partitions: 4, replication_factor: 2)
+
+  MiniTest.after_run do
+    delete_kafka_topic!(TOPIC)
+    delete_kafka_topic!(TOPIC+"-2")
+  end
 end
