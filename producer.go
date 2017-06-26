@@ -88,7 +88,7 @@ func (p *Producer) monitor() {
 		case ev := <-p.rdProd.Events():
 			msg := ev.(*rdkafka.Message)
 			if err := msg.TopicPartition.Error; err != nil {
-				p.log.Printf("Failed to deliver %v", msg)
+				p.log.Printf("Failed to deliver `%s` to %s", msg.Value, msg)
 			}
 		}
 	}
