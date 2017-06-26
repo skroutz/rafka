@@ -1,15 +1,15 @@
-.PHONY: install build test lint vet fmt bench clean
+.PHONY: install build test lint vet fmt clean list
 
-TESTCMD=go test -v
-
-install: test vet fmt
+# TODO(agis): include test when they're deterministic
+install: vet fmt
 	go install
 
-build: test vet fmt
+# TODO(agis): include test when they're deterministic
+build: vet fmt
 	go build
 
 test:
-	$(TESTCMD)
+	test/end-to-end
 
 lint:
 	golint
@@ -18,7 +18,10 @@ vet:
 	go vet
 
 fmt:
-	! gofmt -d -e -s . 2>&1 | tee /dev/tty | read
+	! gofmt -d -e -s *.go 2>&1 | tee /dev/tty | read
 
 clean:
 	go clean
+
+list:
+	@$(MAKE) -pRrq -f $(lastword $(MAKEFILE_LIST)) : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | sort | egrep -v -e '^[^[:alnum:]]' -e '^$@$$' | xargs
