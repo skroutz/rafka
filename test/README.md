@@ -3,12 +3,13 @@ cluster using the [Rufka](https://github.com/skroutz/rufka) driver.
 
 Dependencies:
 
-* Ruby & bundler
-* A Kafka cluster. [kafka-cluster-testbed](https://github.com/skroutz/kafka-cluster-testbed) provides a Dockerized setup
+* Ruby & [bundler](http://bundler.io/)
+* A Kafka cluster. [kafka-cluster-testbed](https://github.com/skroutz/kafka-cluster-testbed) provides a Dockerized setup and
+  is the recommended way to test Rafka.
 
 ## Setup
 
-Run `bundle` in this directory to ensure test dependencies are met.
+Run `$ bundle` in this directory to ensure test dependencies are met.
 
 ## Usage
 
@@ -21,12 +22,12 @@ First, start the Kafka cluster from kafka-cluster-testbed:
 kafka-cluster-testbed/ $ docker-compose up
 ```
 
-Then start the Rafka container:
+Then start the Rafka container (inside this directory):
 ```shell
 $ docker-compose up
 ```
 
-You can now run the tests:
+Finally, run the tests:
 ```shell
 $ ./end-to-end
 ```

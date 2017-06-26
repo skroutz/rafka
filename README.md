@@ -36,22 +36,32 @@ use in production environments until we reach the [1.x series](https://github.co
 
 Dependencies
 -------------------------------------------------------------------------------
-- `golang-github-confluentinc-confluent-kafka-go-dev` (go librdkafka bindings)
-- `golang-github-urfave-cli-dev`
+- [Go 1.8 or later](https://golang.org/)
+- [librdkafka](https://github.com/edenhill/librdkafka)
 
 
 
-
-
-
-Installation
+Getting Started
 ------------
 
-```shell
-$ apt-get install golang librdkafka-dev
-$ go get -u github.com/skroutz/rafka
-```
+1. Install [librdkafka](https://github.com/edenhill/librdkafka):
+   ```shell
+   # debian
+   $ apt-get install librdkafka-dev
 
+   # macOS
+   $ or brew install librdkafka
+   ```
+2. Install Rafka:
+   ```shell
+   $ go get github.com/skroutz/rafka
+   ```
+3. Run it:
+   ```shell
+   $ rafka -k kafka.json.sample
+   [rafka] 2017/06/26 11:07:23 Spawning Consumer Manager (librdkafka 0.9.5)...
+   [server] 2017/06/26 11:07:23 Listening on 0.0.0.0:6380
+   ```
 
 
 
@@ -164,7 +174,44 @@ Example using Redis:
 
 
 
+Development
+-------------------------------------------------------------------------------
+
+
+If this is your first time setting up development on Rafka, ensure that you
+have all the build dependencies via [dep](https://github.com/golang/dep):
+
+```shell
+$ dep ensure
+```
+
+
+Building (also run tests and performs various static checks):
+```shell
+$ make
+```
+
+Running the tests:
+```shell
+$ make test
+```
+(Refer [here](test/README.md) for more information on testing Rafka).
+
+List all available commands:
+```shell
+$ make list
+```
+
+
+
+
+
+
+
+
+
+
 License
----------------------------------------
+-------------------------------------------------------------------------------
 Rafka is licensed under MIT. See [LICENSE](LICENSE).
 
