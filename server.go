@@ -69,12 +69,12 @@ func (s *Server) handleConn(conn net.Conn) {
 			case "BLPOP": // consume
 				topics, err := parseTopics(string(command.Get(1)))
 				if err != nil {
-					ew = writer.WriteError(err.Error())
+					ew = writer.WriteError("CONS " + err.Error())
 					break
 				}
 				cons, err := c.Consumer(topics)
 				if err != nil {
-					ew = writer.WriteError(err.Error())
+					ew = writer.WriteError("CONS " + err.Error())
 					break
 				}
 
@@ -91,7 +91,7 @@ func (s *Server) handleConn(conn net.Conn) {
 
 				select {
 				case <-s.ctx.Done():
-					ew = writer.WriteError("Server shutdown")
+					ew = writer.WriteError("CONS Server shutdown")
 				case msg := <-cons.Out():
 					ew = writer.WriteObjects(msgToRedis(msg)...)
 				case <-ticker.C:
@@ -100,19 +100,19 @@ func (s *Server) handleConn(conn net.Conn) {
 			case "RPUSH": // ack (consumer)
 				key := strings.ToUpper(string(command.Get(1)))
 				if key != "ACKS" {
-					ew = writer.WriteError("You can only RPUSH to the 'acks' key")
+					ew = writer.WriteError("CONS You can only RPUSH to the 'acks' key")
 					break
 				}
 
 				topic, partition, offset, err := parseAck(string(command.Get(2)))
 				if err != nil {
-					ew = writer.WriteError(err.Error())
+					ew = writer.WriteError("CONS " + err.Error())
 					break
 				}
 
 				cons, err := c.ConsumerByTopic(topic)
 				if err != nil {
-					ew = writer.WriteError(err.Error())
+					ew = writer.WriteError("CONS " + err.Error())
 					break
 				}
 
@@ -121,13 +121,13 @@ func (s *Server) handleConn(conn net.Conn) {
 			case "RPUSHX": // produce
 				argc := command.ArgCount() - 1
 				if argc != 2 {
-					ew = writer.WriteError("RPUSHX accepts 2 arguments, got " + strconv.Itoa(argc))
+					ew = writer.WriteError("PROD RPUSHX accepts 2 arguments, got " + strconv.Itoa(argc))
 					break
 				}
 
 				parts := bytes.Split(command.Get(1), []byte(":"))
 				if len(parts) != 2 {
-					ew = writer.WriteError("First argument must be in the form of 'topics:<topic>'")
+					ew = writer.WriteError("PROD First argument must be in the form of 'topics:<topic>'")
 					break
 				}
 				topic := string(parts[1])
@@ -136,13 +136,13 @@ func (s *Server) handleConn(conn net.Conn) {
 
 				prod, err := c.Producer(&cfg.Librdkafka.Producer)
 				if err != nil {
-					ew = writer.WriteError("Error spawning producer: " + err.Error())
+					ew = writer.WriteError("PROD Error spawning producer: " + err.Error())
 					break
 				}
 
 				err = prod.Produce(kafkaMsg)
 				if err != nil {
-					ew = writer.WriteError("Could not produce message: " + err.Error())
+					ew = writer.WriteError("PROD " + err.Error())
 					break
 				}
 				ew = writer.WriteBulkString("OK")
@@ -154,13 +154,13 @@ func (s *Server) handleConn(conn net.Conn) {
 
 				argc := command.ArgCount() - 1
 				if argc != 1 {
-					ew = writer.WriteError("DUMP accepts 1 argument, got " + strconv.Itoa(argc))
+					ew = writer.WriteError("PROD DUMP accepts 1 argument, got " + strconv.Itoa(argc))
 					break
 				}
 
 				timeoutMs, err := strconv.Atoi(string(command.Get(1)))
 				if err != nil {
-					ew = writer.WriteError("NaN")
+					ew = writer.WriteError("PROD NaN")
 					break
 				}
 				ew = writer.WriteInt(int64(c.producer.Flush(timeoutMs)))
@@ -173,13 +173,13 @@ func (s *Server) handleConn(conn net.Conn) {
 
 					_, ok := s.clientByID.Load(newID)
 					if ok {
-						ew = writer.WriteError(fmt.Sprintf("id %s is already taken", newID))
+						ew = writer.WriteError(fmt.Sprintf("CONS id %s is already taken", newID))
 						break
 					}
 
 					err := c.SetID(newID)
 					if err != nil {
-						ew = writer.WriteError(err.Error())
+						ew = writer.WriteError("CONS " + err.Error())
 						break
 					}
 					s.clientByID.Store(newID, c)
@@ -188,7 +188,7 @@ func (s *Server) handleConn(conn net.Conn) {
 				case "GETNAME":
 					ew = writer.WriteBulkString(c.String())
 				default:
-					ew = writer.WriteError("Command not supported")
+					ew = writer.WriteError("CONS Command not supported")
 				}
 			case "QUIT":
 				writer.WriteBulkString("OK")
@@ -273,7 +273,7 @@ Loop:
 func parseTopics(key string) ([]string, error) {
 	parts := strings.SplitN(key, ":", 2)
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("Cannot parse topics: '%s'", key)
+		return nil, fmt.Errorf("Cannot parse topics from `%s`", key)
 	}
 	switch parts[0] {
 	case "topics":
@@ -281,10 +281,9 @@ func parseTopics(key string) ([]string, error) {
 		if len(topics) > 0 {
 			return topics, nil
 		}
-
-		return nil, errors.New("Not enough topics")
+		return nil, errors.New(fmt.Sprintf("Not enough topics in `%s`", key))
 	default:
-		return nil, fmt.Errorf("Cannot parse topics: '%s'", key)
+		return nil, fmt.Errorf("Cannot parse topics from `%s`", key)
 	}
 }
 
