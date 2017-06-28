@@ -9,11 +9,10 @@
    "go.events.channel.enable": true,
    "go.application.rebalance.enable": true,
    "enable.auto.commit": false,
-   "auto.offset.reset": "largest"
+   "auto.offset.reset": "earliest"
  },
  "producer": {
    "go.delivery.reports": true,
-   "queue.buffering.max.ms": 1000,
-   "queue.buffering.max.messages": 100000
+   "queue.buffering.max.ms": 0
  }
 }
