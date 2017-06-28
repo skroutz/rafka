@@ -9,7 +9,7 @@ Dependencies:
 
 ## Setup
 
-Run `$ bundle` in this directory to ensure test dependencies are met.
+Run `$ bundle` in this directory to ensure test dependencies are satisfied.
 
 ## Usage
 
@@ -24,7 +24,7 @@ kafka-cluster-testbed/ $ docker-compose up
 
 Then start the Rafka container (inside this directory):
 ```shell
-$ docker-compose up
+$ docker-compose start
 ```
 
 Finally, run the tests:

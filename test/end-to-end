@@ -1,144 +1,138 @@
 #!/usr/bin/env ruby
+require "bundler/setup"
+Bundler.setup(:default)
 require "securerandom"
 require "minitest/autorun"
+require "rafka"
 require_relative "test_helper"
 
-rafka = (ENV["RAFKA"] || "localhost:6380").split(":")
-HOST, PORT = rafka[0], Integer(rafka[1])
-TOPIC = ENV["DOCKER"] ? "test-rafka-#{Time.now.to_i}-#{SecureRandom.hex(6)}" : "test-rafka"
-FLUSH_TIMEOUT = 5000
-CONSUME_RETRIES = 3
+host_port = (ENV["RAFKA"] || "localhost:6380").split(":")
+host, port = host_port[0], Integer(host_port[1])
 
-require "bundler/inline"
-gemfile(true) do
-  source 'https://rubygems.org'
-  gem "rafka", git: "https://github.com/skroutz/rafka-rb"
-  gem "minitest"
-  gem "pry-byebug"
-end
+CLIENT_DEFAULTS = { host: host, port: port }
+FLUSH_TIMEOUT = 5000
+CONSUME_RETRIES = 4
+CONSUME_TIMEOUT = 3
 
 class TestRafka < Minitest::Test
-  DEFAULTS = { host: HOST, port: PORT }
-
   def setup
-    @cons = Rafka::Consumer.new(DEFAULTS.merge(
-      topic: TOPIC, group: "test-#{SecureRandom.hex(6)}", id: SecureRandom.hex(4)))
-    @prod = Rafka::Producer.new(DEFAULTS)
-  end
-
-  def test_consume_single
-    start_consumer!(@cons)
-
-    produce_and_flush!(@prod, TOPIC, "huhu")
-
-    msg = consume_with_retry(@cons)
-    assert_equal "huhu", (msg && msg.value)
+    @prod = Rafka::Producer.new(CLIENT_DEFAULTS)
   end
 
   def test_consume_many
-    start_consumer!(@cons)
+    with_new_topic(consumer: true) do |topic, cons|
+      start_consumer!(cons)
 
-    3.times { |i| @prod.produce(TOPIC, i) }
-    flush!(@prod)
+      3.times { |i| @prod.produce(topic, i) }
+      flush!(@prod)
 
-    replies = []
-    3.times do |i|
-      msg = consume_with_retry(@cons)
-      if !(msg && msg.value =~ /\A\d\z/)
-        flunk("Unexpected reply: #{msg.inspect}. Replies so far: #{replies.inspect}")
+      replies = []
+      3.times do |i|
+        msg = consume_with_retry(cons)
+        assert_rafka_msg msg
+        replies << msg.value
       end
-      replies << msg.value
-    end
 
-    assert_equal ["0", "1", "2"], replies.sort
-    assert_nil @cons.consume(1)
+      assert_equal ["0", "1", "2"], replies.sort
+    end
   end
 
-  def test_producer_flush
-    5.times { @prod.produce(TOPIC, "foo") }
-    assert_equal 0, @prod.flush(FLUSH_TIMEOUT)
+  def test_many_consumers_same_topic
+    with_new_topic do |topic|
+      group_id = SecureRandom.hex(6)
+      cons1 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons1"))
+      cons2 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons2"))
+      start_consumer!(cons1)
+      start_consumer!(cons2)
+
+      msgs = Array.new(2) { SecureRandom.hex(4) }
+      msgs.each { |msg| @prod.produce(topic, msg) }
+      flush!(@prod)
+
+      replies = []
+      tries = 0
+
+      while replies.size < 2 && tries < 6
+        tries += 1
+
+        msg = consume_with_retry(cons1) || consume_with_retry(cons2)
+        next if !msg
+
+        replies << msg.value
+        replies.uniq!
+      end
+
+      assert_equal msgs.sort, replies.sort
+    end
   end
 
-  # TODO(agis): fix occassional failures
-  def test_multiple_consumers_same_topic
-    group_id = SecureRandom.hex(6)
-    cons1 = Rafka::Consumer.new(DEFAULTS.merge(topic: TOPIC, group: group_id, id: "cons1"))
-    cons2 = Rafka::Consumer.new(DEFAULTS.merge(topic: TOPIC, group: group_id, id: "cons2"))
-    start_consumer!(cons1)
-    start_consumer!(cons2)
+  def test_consumer_group_rebalance
+    with_new_topic do |topic|
+      group_id = SecureRandom.hex(6)
+      cons1 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons1"))
+      cons2 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons2"))
+      msg1 = SecureRandom.hex(4)
+      msg2 = SecureRandom.hex(4)
 
-    msgs = Array.new(2) { SecureRandom.hex(4) }
+      start_consumer!(cons1)
+      produce_and_flush!(@prod, topic, msg1)
+      assert_rafka_msg_equal msg1, consume_with_retry(cons1)
 
-    # produce it
-    msgs.each { |msg| @prod.produce(TOPIC, msg) }
-    flush!(@prod)
+      # commit offsets and shutdown so that cons2 gets all the partitions
+      cons1.quit
+      start_consumer!(cons2)
 
-    # consume it
-    replies = []
-    2.times do
-      msg = consume_with_retry(cons1)
-      break if !msg
-      replies << msg.value
-    end
+      produce_and_flush!(@prod, topic, msg2)
 
-    if replies.size < 2
-      2.times do
-        msg = consume_with_retry(cons2)
-        replies << msg.value if msg
-        break if replies.size == 2
+      incoming = consume_with_retry(cons2)
+      assert_rafka_msg incoming
+
+      if incoming.value != msg2
+        # it means cons2 was assigned the partition before cons1's offsets
+        # were commited
+        assert_rafka_msg_equal msg1, incoming
+        assert_rafka_msg_equal msg2, consume_with_retry(cons2)
+      else
+        assert_rafka_msg_equal msg2, incoming
       end
     end
-
-    assert_equal msgs.sort, replies.sort
   end
 
-  # TODO(agis): fix occassional failures
-  def test_consumer_reassign
-    group_id = SecureRandom.hex(6)
-    cons1 = Rafka::Consumer.new(DEFAULTS.merge(topic: TOPIC, group: group_id, id: "cons1"))
-    cons2 = Rafka::Consumer.new(DEFAULTS.merge(topic: TOPIC, group: group_id, id: "cons2"))
+  def test_many_consumers_different_topics
+    with_new_topic(consumer: true) do |topic1, cons1|
+      with_new_topic(consumer: true) do |topic2, cons2|
+        start_consumer!(cons1)
+        start_consumer!(cons2)
 
-    start_consumer!(cons1)
-    msg = SecureRandom.hex(4)
-    produce_and_flush!(@prod, TOPIC, msg)
-    assert_rafka_msg_equal msg, consume_with_retry(cons1)
+        @prod.produce(topic1, "I'm Mr. Meeseeks")
+        @prod.produce(topic2, "Look at me")
+        flush!(@prod)
 
-    cons1.quit # so that cons2 gets all the partitions
-
-    start_consumer!(cons2)
-    msg = SecureRandom.hex(4)
-    produce_and_flush!(@prod, TOPIC, msg)
-    assert_rafka_msg_equal msg, consume_with_retry(cons2)
+        assert_rafka_msg_equal "I'm Mr. Meeseeks", consume_with_retry(cons1)
+        assert_rafka_msg_equal "Look at me", consume_with_retry(cons2)
+      end
+    end
   end
-
-  def test_two_consumers_different_topics
-    cons2 = Rafka::Consumer.new(DEFAULTS.merge(topic: TOPIC+"-2", group: "asdf"))
-    start_consumer!(cons2)
-    start_consumer!(@cons)
-
-    @prod.produce(TOPIC, "I'm Mr. Meeseeks")
-    @prod.produce(TOPIC+"-2", "Look at me")
-    flush!(@prod)
-
-    assert_rafka_msg_equal "I'm Mr. Meeseeks", consume_with_retry(@cons)
-    assert_rafka_msg_equal "Look at me", consume_with_retry(cons2)
-  end if ENV["DOCKER"]
 
   def test_produce_wrong_topic
+    # TODO(agis): first produce should also raise an error. This is a Rafka
+    # issue
     @prod.produce("idontexist", "foo")
-    binding.pry
-    1
+    @prod.flush
+
+    assert_raises Rafka::ProduceError do
+      @prod.produce("idontexist", "foo")
+    end
   end
 end
 
-puts "\nRunning tests on #{HOST}:#{PORT} (CONSUME_RETRIES=#{CONSUME_RETRIES})..."
+puts "\nRunning on #{host_port} " \
+     "(Client version #{Rafka::VERSION}, CONSUME_RETRIES=#{CONSUME_RETRIES}, " \
+     "CONSUME_TIMEOUT=#{CONSUME_TIMEOUT})..."
 
-if ENV["DOCKER"]
-  create_kafka_topic!(TOPIC, partitions: 4, replication_factor: 2)
-  create_kafka_topic!(TOPIC+"-2", partitions: 4, replication_factor: 2)
+$topics = []
 
-  MiniTest.after_run do
-    delete_kafka_topic!(TOPIC)
-    delete_kafka_topic!(TOPIC+"-2")
-  end
+MiniTest.after_run do
+  puts "Deleting (#{$topics.count}) test topics..."
+  $topics.each { |t| delete_kafka_topic!(t) }
 end
