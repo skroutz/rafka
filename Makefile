@@ -1,11 +1,9 @@
 .PHONY: install build test lint vet fmt clean list
 
-# TODO(agis): include test when they're deterministic
-install: vet fmt
+install: vet fmt test
 	go install
 
-# TODO(agis): include test when they're deterministic
-build: vet fmt
+build: vet fmt test
 	go build
 
 test:
