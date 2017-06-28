@@ -1,4 +1,4 @@
 #!/bin/bash
 set -e
-go build
-exec ./rafka -k test/kafka.test.json -i 2
+/usr/lib/go-1.8/bin/go build
+./rafka -k test/kafka.test.json -i 1

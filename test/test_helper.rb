@@ -1,8 +1,13 @@
+# @return [Rafka::Consumer]
+def new_consumer(topic, group="test-#{SecureRandom.hex(6)}", id=SecureRandom.hex(4))
+  Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group, id: id))
+end
+
 # @return [nil, Rafka::Message]
-def consume_with_retry(consumer)
+def consume_with_retry(consumer, timeout: CONSUME_TIMEOUT, retries: CONSUME_RETRIES)
   res = nil
-  CONSUME_RETRIES.times do
-    res = consumer.consume(2)
+  retries.times do
+    res = consumer.consume(timeout)
     return res if res
   end
   res
@@ -22,24 +27,34 @@ def start_consumer!(cons)
   cons.consume(1)
 end
 
-def create_kafka_topic!(topic, partitions:, replication_factor:)
-  success = system(
-    "docker exec -it kc1 kafka-topics --create --topic #{topic} " \
-    "--partitions #{partitions} --replication-factor #{replication_factor} " \
-    "--zookeeper \"zoo1,zoo2,zoo3\""
-  )
-  raise "Error creating topic #{topic}" if !success
+# Creates a new topic and optionally a consumer to consume from it.
+def with_new_topic(topic: "rafka-test-#{Time.now.to_i}-#{SecureRandom.hex(4)}",
+               partitions: 4, replication_factor: 2,
+               consumer: false)
+  create_kafka_topic!(topic, partitions, replication_factor)
+  $topics << topic
+
+  consumer = consumer ? new_consumer(topic) : nil
+
+  yield topic, consumer
+end
+
+def create_kafka_topic!(topic, part, repl_factor)
+  out = `docker exec -it kc2 kafka-topics --create --topic #{topic} \
+         --partitions #{part} --replication-factor #{repl_factor} \
+         --zookeeper \"zoo1,zoo2,zoo3\"`
+
+  raise "Error creating topic #{topic}: #{out}" if !$?.success?
 end
 
 def delete_kafka_topic!(topic)
-  success = system(
-    "docker exec -it kc1 kafka-topics --delete --topic #{topic} --if-exists " \
-    "--zookeeper \"zoo1,zoo2,zoo3\""
-  )
-  raise "Error deleting topic #{topic}" if !success
+  out = `docker exec -it kc1 kafka-topics --delete --topic #{topic} --if-exists \
+         --zookeeper \"zoo1,zoo2,zoo3\"`
+
+  raise "Error deleting topic #{topic}: #{out}" if !$?.success?
 end
 
-# assertions
+# ASSERTIONS
 def assert_rafka_msg(msg)
   assert_kind_of Rafka::Message, msg
 end

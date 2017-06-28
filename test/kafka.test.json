@@ -2,18 +2,17 @@
  "general": {
    "api.version.request": true,
    "bootstrap.servers": "kc1.docker,kc2.docker",
-   "session.timeout.ms": 10000,
+   "session.timeout.ms": 3000,
    "log.connection.close": false
  },
  "consumer": {
    "go.events.channel.enable": true,
    "go.application.rebalance.enable": true,
    "enable.auto.commit": false,
-   "auto.offset.reset": "largest"
+   "auto.offset.reset": "earliest"
  },
  "producer": {
    "go.delivery.reports": true,
-   "queue.buffering.max.ms": 1000,
-   "queue.buffering.max.messages": 100000
+   "queue.buffering.max.ms": 0
  }
 }
