@@ -158,7 +158,7 @@ func (c *Consumer) commitOffsets() {
 
 		_, err := c.consumer.CommitOffsets(rdkafkaTp)
 		if err != nil {
-			c.log.Printf("Error committing offset %+v: %s", off, err)
+			c.log.Printf("Error committing offset %d for %s: %s", off, rdkafkaTp, err)
 			continue
 		}
 		c.log.Printf("Commited offset %#v", rdkafkaTp)
