@@ -2,7 +2,7 @@
  "general": {
    "api.version.request": true,
    "bootstrap.servers": "kc1.docker,kc2.docker",
-   "session.timeout.ms": 10000,
+   "session.timeout.ms": 3000,
    "log.connection.close": false
  },
  "consumer": {
