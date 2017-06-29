@@ -60,7 +60,6 @@ func (s *Server) handleConn(conn net.Conn) {
 			if ok {
 				ew = writer.WriteError(err.Error())
 			} else {
-				s.log.Println("Closed connection to", c)
 				break
 			}
 		} else {
@@ -204,7 +203,6 @@ func (s *Server) handleConn(conn net.Conn) {
 			writer.Flush()
 		}
 		if ew != nil {
-			s.log.Println("Connection closed", ew)
 			break
 		}
 	}
@@ -220,7 +218,6 @@ func (s *Server) ListenAndServe(port string) error {
 
 	go func() {
 		<-s.ctx.Done() // unblock Accept()
-		s.log.Printf("Shutting down...")
 		listener.Close()
 
 		closeFunc := func(id, client interface{}) bool {
@@ -263,10 +260,9 @@ Loop:
 		}
 	}
 
-	s.log.Println("Waiting for in-flight connections...")
+	s.log.Println("Terminating in-flight connections...")
 	s.inFlight.Wait()
-	s.log.Println("All connections closed. Bye!")
-
+	s.log.Println("Bye")
 	return nil
 }
 

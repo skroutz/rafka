@@ -66,22 +66,25 @@ func (c *Client) Consumer(topics []string) (*Consumer, error) {
 		return nil, errors.New("Connection not ready. Identify yourself using `CLIENT SETNAME` first")
 	}
 
-	consID := ConsumerID(fmt.Sprintf("%s|%s", c.id, strings.Join(topics, ",")))
+	// we include the topics in the consumer's id so that GetOrCreate()
+	// creates a new consumer if the client issues a BLPOP for a different
+	// topic
+	cid := ConsumerID(fmt.Sprintf("%s|%s", c.id, strings.Join(topics, ",")))
 
 	for _, topic := range topics {
 		if existingID, ok := c.consByTopic[topic]; ok {
-			if existingID != consID {
+			if existingID != cid {
 				return nil, fmt.Errorf("Topic %s has another consumer", topic)
 			}
 		}
 	}
 
-	c.consumers[consID] = true
+	c.consumers[cid] = true
 	for _, topic := range topics {
-		c.consByTopic[topic] = consID
+		c.consByTopic[topic] = cid
 	}
 
-	return c.consManager.Get(consID, c.consGID, topics), nil
+	return c.consManager.GetOrCreate(cid, c.consGID, topics), nil
 }
 
 func (c *Client) ConsumerByTopic(topic string) (*Consumer, error) {
@@ -106,12 +109,13 @@ func (c *Client) Producer(cfg *rdkafka.ConfigMap) (*Producer, error) {
 	if c.producer != nil {
 		return c.producer, nil
 	}
+
 	c.producer, err = NewProducer(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return c.producer, nil
 
+	return c.producer, nil
 }
 
 // Close closes c's underlying producers and consumers. Calling Close on
