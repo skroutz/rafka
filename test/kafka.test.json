@@ -3,7 +3,8 @@
    "api.version.request": true,
    "bootstrap.servers": "kc1.docker,kc2.docker",
    "session.timeout.ms": 3000,
-   "log.connection.close": false
+   "log.connection.close": false,
+   "heartbeat.interval.ms": 500
  },
  "consumer": {
    "go.events.channel.enable": true,
