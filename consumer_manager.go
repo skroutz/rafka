@@ -11,9 +11,7 @@ import (
 )
 
 type consumerPool map[ConsumerID]*consumerPoolEntry
-
 type ConsumerID string
-
 type consumerPoolEntry struct {
 	consumer *Consumer
 	cancel   context.CancelFunc
@@ -41,16 +39,16 @@ func (m *ConsumerManager) Run() {
 	<-m.ctx.Done()
 	m.log.Println("Waiting for all consumers to finish...")
 	m.consumersWg.Wait()
-	m.log.Println("All consumers shut down, bye!")
+	m.log.Println("All consumers shut down. Bye")
 }
 
-// Get returns a Kafka consumer associated with id, groupID and topics.
-// It creates a new one if none exists.
-func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *Consumer {
+// GetOrCreate returns the Consumer denoted by cid. If such a Consumer does not
+// exist, a new one is created.
+func (m *ConsumerManager) GetOrCreate(cid ConsumerID, gid string, topics []string) *Consumer {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if _, ok := m.pool[id]; !ok {
+	if _, ok := m.pool[cid]; !ok {
 		// apparently, reusing the same config between consumers
 		// silently makes them non-operational
 		kafkaCfg := rdkafka.ConfigMap{}
@@ -60,19 +58,18 @@ func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *C
 				m.log.Printf("Error configuring consumer: %s", err)
 			}
 		}
-		err := kafkaCfg.SetKey("group.id", groupID)
+		err := kafkaCfg.SetKey("group.id", gid)
 		if err != nil {
 			m.log.Printf("Error configuring consumer: %s", err)
 		}
 
-		c := NewConsumer(string(id), topics, m.cfg.CommitIntvl, kafkaCfg)
+		c := NewConsumer(string(cid), topics, m.cfg.CommitIntvl, kafkaCfg)
 		ctx, cancel := context.WithCancel(m.ctx)
-		m.pool[id] = &consumerPoolEntry{
+		m.pool[cid] = &consumerPoolEntry{
 			consumer: c,
 			cancel:   cancel,
 		}
 
-		m.log.Printf("Spawning consumer %s | config:%v", id, m.cfg)
 		m.consumersWg.Add(1)
 		go func(ctx context.Context) {
 			defer m.consumersWg.Done()
@@ -80,16 +77,16 @@ func (m *ConsumerManager) Get(id ConsumerID, groupID string, topics []string) *C
 		}(ctx)
 	}
 
-	return m.pool[id].consumer
+	return m.pool[cid].consumer
 }
 
-func (m *ConsumerManager) ByID(id ConsumerID) (*Consumer, error) {
+func (m *ConsumerManager) ByID(cid ConsumerID) (*Consumer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	entry, ok := m.pool[id]
+	entry, ok := m.pool[cid]
 	if !ok {
-		return nil, fmt.Errorf("No consumer with ConsumerID %s", id)
+		return nil, fmt.Errorf("No consumer with id %s", cid)
 	}
 
 	return entry.consumer, nil
@@ -100,17 +97,16 @@ func (m *ConsumerManager) ByID(id ConsumerID) (*Consumer, error) {
 //
 // It does not block until the consumer is actually closed (this is instead
 // done when ConsumerManager is closed).
-func (m *ConsumerManager) ShutdownConsumer(id ConsumerID) bool {
+func (m *ConsumerManager) ShutdownConsumer(cid ConsumerID) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	c, ok := m.pool[id]
+	c, ok := m.pool[cid]
 	if !ok {
 		return false
 	}
 
-	m.log.Printf("Shutting down consumer %s...", id)
-	delete(m.pool, id)
+	delete(m.pool, cid)
 
 	// We don't block waiting for the consumer to finish. Perhaps we should.
 	//

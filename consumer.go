@@ -40,7 +40,7 @@ func NewConsumer(id string, topics []string, commitIntvl time.Duration, cfg rdka
 	c := Consumer{
 		id:          id,
 		topics:      topics,
-		log:         log.New(os.Stderr, fmt.Sprintf("[consumer] [%s] ", id), log.Ldate|log.Ltime),
+		log:         log.New(os.Stderr, fmt.Sprintf("[consumer-%s] ", id), log.Ldate|log.Ltime),
 		out:         make(chan *rdkafka.Message),
 		commitIntvl: commitIntvl,
 		offsets:     make(map[TopicPartition]rdkafka.Offset),
@@ -48,7 +48,8 @@ func NewConsumer(id string, topics []string, commitIntvl time.Duration, cfg rdka
 
 	c.consumer, err = rdkafka.NewConsumer(&cfg)
 	if err != nil {
-		// TODO should be fatal?
+		// TODO(agis): make this a log output instead if we ever accept
+		// config from clients
 		c.log.Fatal(err)
 	}
 
@@ -80,7 +81,6 @@ func (c *Consumer) Run(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
-				c.log.Print("Commiting final offsets...")
 				c.commitOffsets()
 				break Loop
 			case oe := <-c.offsetIn:
@@ -91,13 +91,13 @@ func (c *Consumer) Run(ctx context.Context) {
 		}
 	}(ctx)
 
+	c.log.Printf("Started working...")
 	wg.Wait()
-	c.log.Print("Closing...")
 	err := c.consumer.Close()
 	if err != nil {
 		c.log.Printf("Error closing: %s", err)
 	}
-	c.log.Println("Bye!")
+	c.log.Println("Bye")
 }
 
 func (c *Consumer) run(ctx context.Context) {
@@ -109,10 +109,8 @@ Loop:
 		case ev := <-c.consumer.Events():
 			switch e := ev.(type) {
 			case rdkafka.AssignedPartitions:
-				c.log.Print(e)
 				c.consumer.Assign(e.Partitions)
 			case rdkafka.RevokedPartitions:
-				c.log.Print(e)
 				c.consumer.Unassign()
 			case *rdkafka.Message:
 				// We cannot block on c.out, we need to make sure
@@ -127,8 +125,7 @@ Loop:
 			case rdkafka.PartitionEOF:
 				// nothing to do in this case
 			case rdkafka.Error:
-				// TODO Handle gracefully?
-				c.log.Printf("Error: %v", e)
+				c.log.Printf("Error caused termination: %v", e)
 				break Loop
 			default:
 				c.log.Printf("Unhandled event: %v", e)
@@ -161,7 +158,6 @@ func (c *Consumer) commitOffsets() {
 			c.log.Printf("Error committing offset %d for %s: %s", off, rdkafkaTp, err)
 			continue
 		}
-		c.log.Printf("Commited offset %#v", rdkafkaTp)
 		delete(c.offsets, tp)
 	}
 }

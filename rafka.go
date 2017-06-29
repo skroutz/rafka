@@ -114,7 +114,7 @@ func run(c *cli.Context) {
 	ctx := context.Background()
 
 	_, rdkafkaVer := rdkafka.LibraryVersion()
-	l.Printf("Spawning Consumer Manager (librdkafka %s)...", rdkafkaVer)
+	l.Printf("Spawning Consumer Manager (librdkafka %s) | config: %v...", rdkafkaVer, cfg)
 	var managerWg sync.WaitGroup
 	managerCtx, managerCancel := context.WithCancel(ctx)
 	manager := NewConsumerManager(managerCtx, cfg)
@@ -140,13 +140,10 @@ func run(c *cli.Context) {
 	}()
 
 	<-sigCh
-	l.Println("Received shutdown signal. Waiting for server to shutdown...")
+	l.Println("Received shutdown signal. Shutting down...")
 	serverCancel()
 	serverWg.Wait()
-
-	l.Println("Waiting for consumer manager to shutdown...")
 	managerCancel()
 	managerWg.Wait()
-
-	l.Println("Bye!")
+	l.Println("All components shut down. Bye!")
 }

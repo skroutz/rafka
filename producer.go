@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 type Producer struct {
-	rdProd    *rdkafka.Producer
-	log       *log.Logger
-	monitored bool
+	id      string
+	rdProd  *rdkafka.Producer
+	log     *log.Logger
+	started bool
 
 	close, done chan struct{}
 }
@@ -22,24 +24,31 @@ func NewProducer(cfg *rdkafka.ConfigMap) (*Producer, error) {
 		return nil, err
 	}
 
+	id := strings.TrimPrefix(rdProd.String(), "rdkafka#")
+
 	return &Producer{
-		close:     make(chan struct{}),
-		rdProd:    rdProd,
-		log:       log.New(os.Stderr, fmt.Sprintf("[%s] ", rdProd), log.Ldate|log.Ltime),
-		monitored: false,
-		done:      make(chan struct{})}, nil
+		id:      id,
+		close:   make(chan struct{}),
+		rdProd:  rdProd,
+		log:     log.New(os.Stderr, fmt.Sprintf("[%s] ", id), log.Ldate|log.Ltime),
+		started: false,
+		done:    make(chan struct{})}, nil
 
 }
 
+func (p *Producer) String() string {
+	return p.id
+}
+
 func (p *Producer) Produce(msg *rdkafka.Message) error {
-	if !p.monitored {
-		go p.monitor()
-		p.monitored = true
+	if !p.started {
+		go p.run()
+		p.started = true
+		p.log.Printf("Started working...")
 	}
 
 	err := p.rdProd.Produce(msg, nil)
 	if err != nil {
-		p.log.Printf("Error producing message: %s | %s", msg, err)
 		return err
 	}
 	return nil
@@ -58,21 +67,19 @@ func (p *Producer) Flush(timeoutMs int) int {
 func (p *Producer) Close() {
 	p.close <- struct{}{}
 	<-p.done
-	p.log.Print("Bye!")
+	p.log.Print("Bye")
 }
 
-// monitor logs message delivery failures. It also cleans up when p is closed.
-func (p *Producer) monitor() {
+// run logs message delivery failures. It also performs cleans up tasks when p
+// is closed.
+func (p *Producer) run() {
 	for {
 		select {
 		case <-p.close:
-			p.log.Print("Flushing and shutting down...")
 			// TODO(agis) make this configurable?
 			unflushed := p.rdProd.Flush(5000)
 			if unflushed > 0 {
 				p.log.Printf("Flush timeout: %d unflushed events", unflushed)
-			} else {
-				p.log.Printf("All messages flushed")
 			}
 			select {
 			case ev := <-p.rdProd.Events():
