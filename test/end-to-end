@@ -41,13 +41,13 @@ class TestRafka < Minitest::Test
 
   def test_many_consumers_same_topic
     with_new_topic do |topic|
-      group_id = SecureRandom.hex(6)
+      group_id = rand_id(:cgroup)
       cons1 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons1"))
       cons2 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons2"))
       start_consumer!(cons1)
       start_consumer!(cons2)
 
-      msgs = Array.new(2) { SecureRandom.hex(4) }
+      msgs = ["a", "b"]
       msgs.each { |msg| @prod.produce(topic, msg) }
       flush!(@prod)
 
@@ -70,11 +70,11 @@ class TestRafka < Minitest::Test
 
   def test_consumer_group_rebalance
     with_new_topic do |topic|
-      group_id = SecureRandom.hex(6)
+      group_id = rand_id(:cgroup)
       cons1 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons1"))
       cons2 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons2"))
-      msg1 = SecureRandom.hex(4)
-      msg2 = SecureRandom.hex(4)
+      msg1 = "hi"
+      msg2 = "hello"
 
       start_consumer!(cons1)
       produce_and_flush!(@prod, topic, msg1)

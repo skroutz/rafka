@@ -1,5 +1,14 @@
-# @return [Rafka::Consumer]
-def new_consumer(topic, group="test-#{SecureRandom.hex(6)}", id=SecureRandom.hex(4))
+def rand_id(type=nil)
+  SecureRandom.hex(4).prepend(
+    case type
+    when :cgroup then "G"
+    when :cons then "C"
+    else ""
+    end
+  )
+end
+
+def new_consumer(topic, group=rand_id(:cgroup), id=rand_id(:cons))
   Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group, id: id))
 end
 
@@ -18,6 +27,7 @@ def produce_and_flush!(prod, topic, msg)
   flush!(prod)
 end
 
+# @raise [] if there are still unflushed messages
 def flush!(prod)
   unflushed = prod.flush(FLUSH_TIMEOUT)
   flunk("#{unflushed} unflushed messages remained") if unflushed > 0
@@ -28,7 +38,7 @@ def start_consumer!(cons)
 end
 
 # Creates a new topic and optionally a consumer to consume from it.
-def with_new_topic(topic: "rafka-test-#{Time.now.to_i}-#{SecureRandom.hex(4)}",
+def with_new_topic(topic: "rafka-test-#{Time.now.to_i}-#{rand_id}",
                partitions: 4, replication_factor: 2,
                consumer: false)
   create_kafka_topic!(topic, partitions, replication_factor)
@@ -53,6 +63,7 @@ def delete_kafka_topic!(topic)
 
   raise "Error deleting topic #{topic}: #{out}" if !$?.success?
 end
+
 
 # ASSERTIONS
 def assert_rafka_msg(msg)
