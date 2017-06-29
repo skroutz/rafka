@@ -1,5 +1,6 @@
-PATH
-  remote: ~/dev/rafka-rb
+GIT
+  remote: https://github.com/skroutz/rafka-rb
+  revision: 548dee4e5dd908c5ef60f8caa91c21dff10b2ac6
   specs:
     rafka (0.0.1)
       redis (~> 3.3)

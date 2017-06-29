@@ -1,5 +1,5 @@
 source 'https://rubygems.org'
 
-gem "rafka", path: "~/dev/rafka-rb"
+gem "rafka", git: "https://github.com/skroutz/rafka-rb"
 gem "minitest"
 gem "pry-byebug"
