@@ -2,4 +2,3 @@ source 'https://rubygems.org'
 
 gem "rafka", git: "https://github.com/skroutz/rafka-rb"
 gem "minitest"
-gem "pry-byebug"
