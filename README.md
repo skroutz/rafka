@@ -47,10 +47,10 @@ Getting Started
 1. Install [librdkafka](https://github.com/edenhill/librdkafka):
    ```shell
    # debian
-   $ apt-get install librdkafka-dev
+   $ sudo apt-get install librdkafka-dev
 
    # macOS
-   $ or brew install librdkafka
+   $ brew install librdkafka
    ```
 2. Install Rafka:
    ```shell

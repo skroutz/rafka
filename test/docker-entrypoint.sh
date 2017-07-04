@@ -1,4 +1,6 @@
 #!/bin/bash
 set -e
+
 /usr/lib/go-1.8/bin/go build
-./rafka -k test/kafka.test.json -i 1
+
+exec "./rafka" "$@"

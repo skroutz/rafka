@@ -18,8 +18,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     golang-github-urfave-cli-dev \
     golang-golang-x-sync-dev
 
-EXPOSE 6380
 ENV GOPATH /usr/share/gocode
+
 VOLUME ["/rafka"]
 WORKDIR "/rafka"
-ENTRYPOINT ["test/rafka-start"]
+
+ENTRYPOINT ["test/docker-entrypoint.sh"]
+EXPOSE 6380
+
+CMD ["-k", "test/kafka.test.json", "-i", "1"]
