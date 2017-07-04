@@ -24,7 +24,7 @@ kafka-cluster-testbed/ $ docker-compose up
 
 Then start the Rafka container (inside this directory):
 ```shell
-$ docker-compose start
+$ docker-compose up
 ```
 
 Finally, run the tests:
