@@ -13,8 +13,8 @@ host, port = host_port[0], Integer(host_port[1])
 
 CLIENT_DEFAULTS = { host: host, port: port }
 FLUSH_TIMEOUT = 5000
-CONSUME_RETRIES = 4
-CONSUME_TIMEOUT = 3
+CONSUME_RETRIES = 3
+CONSUME_TIMEOUT = 2
 
 class TestRafka < Minitest::Test
   def setup
@@ -26,7 +26,7 @@ class TestRafka < Minitest::Test
       start_consumer!(cons)
 
       3.times { |i| @prod.produce(topic, i) }
-      flush!(@prod)
+      assert_flushed @prod
 
       replies = []
       3.times do |i|
@@ -41,15 +41,15 @@ class TestRafka < Minitest::Test
 
   def test_many_consumers_same_topic
     with_new_topic do |topic|
-      group_id = rand_id(:cgroup)
-      cons1 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons1"))
-      cons2 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons2"))
+      gid = rand_id
+      cons1 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: gid, id: "cons1"))
+      cons2 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: gid, id: "cons2"))
       start_consumer!(cons1)
       start_consumer!(cons2)
 
       msgs = ["a", "b"]
       msgs.each { |msg| @prod.produce(topic, msg) }
-      flush!(@prod)
+      assert_flushed @prod
 
       replies = []
       tries = 0
@@ -70,9 +70,9 @@ class TestRafka < Minitest::Test
 
   def test_consumer_group_rebalance
     with_new_topic do |topic|
-      group_id = rand_id(:cgroup)
-      cons1 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons1"))
-      cons2 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group_id, id: "cons2"))
+      gid = rand_id
+      cons1 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: gid, id: "cons1"))
+      cons2 = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: gid, id: "cons2"))
       msg1 = "hi"
       msg2 = "hello"
 
@@ -81,7 +81,7 @@ class TestRafka < Minitest::Test
       assert_rafka_msg_equal msg1, consume_with_retry(cons1)
 
       # commit offsets and shutdown so that cons2 gets all the partitions
-      cons1.quit
+      cons1.close
       start_consumer!(cons2)
 
       produce_and_flush!(@prod, topic, msg2)
@@ -108,7 +108,7 @@ class TestRafka < Minitest::Test
 
         @prod.produce(topic1, "I'm Mr. Meeseeks")
         @prod.produce(topic2, "Look at me")
-        flush!(@prod)
+        assert_flushed @prod
 
         assert_rafka_msg_equal "I'm Mr. Meeseeks", consume_with_retry(cons1)
         assert_rafka_msg_equal "Look at me", consume_with_retry(cons2)
@@ -117,19 +117,100 @@ class TestRafka < Minitest::Test
   end
 
   def test_produce_wrong_topic
-    # TODO(agis): first produce should also raise an error. This is a Rafka
-    # issue
-    @prod.produce("idontexist", "foo")
-    @prod.flush
-
     assert_raises Rafka::ProduceError do
+      # TODO(agis): first produce won't do it. This is a Rafka issue.
       @prod.produce("idontexist", "foo")
+      @prod.flush
+      @prod.produce("idontexist", "foo")
+    end
+  end
+
+  def test_cgroup_reconnect_single_partition
+    with_new_topic(partitions: 1) do |topic|
+      produce_and_flush!(@prod, topic, "foo")
+      group_a = "a_group"
+      cons = new_consumer(topic, group_a)
+      assert_rafka_msg_equal "foo", consume_with_retry(cons)
+      cons.close
+
+      produce_and_flush!(@prod, topic, "bar")
+
+      assert_rafka_msg_equal "bar", consume_with_retry(new_consumer(topic, group_a))
+
+      cons = new_consumer(topic, "another_group")
+      assert_rafka_msg_equal "foo", consume_with_retry(cons)
+      assert_rafka_msg_equal "bar", consume_with_retry(cons)
+    end
+  end
+
+  # This tests a real-world scenario where a client app restarts (eg. during
+  # deployment), thus stopping and restarting its consumers.
+  #
+  # The flow is the following:
+  #
+  #   1. Consumers of a group (we call it cgroup) are consuming from topic Y
+  #   2. Values are produced to topic Y
+  #   3. cgroup consumes the produced values
+  #   4. cgroup is restarted (ie. app is deployed)
+  #   5. More values are produced to topic Y
+  #   6. cgroup continues consuming from the last position, ie. it doesn't
+  #      reconsume values from step (2) but only from (5)
+  def test_cgroup_reconnect_many_partitions
+    partitions = 4
+    input_size = 20
+    reconsumes_tolerated = partitions
+    flunk "input_size must be even, given: #{input_size}" if input_size.odd?
+
+    with_new_topic(partitions: partitions) do |topic|
+      group = "cgroupA"
+      input = (1..input_size)
+      input_a, input_b = input.each_slice(input_size/2).to_a
+      output = Hash.new(0)
+
+      # produce some input and consume it
+      cgroup = Array.new(2) { new_consumer(topic, group) }
+      cgroup.each { |c| start_consumer!(c) }
+      input_a.each { |i| @prod.produce(topic, i) }
+      assert_flushed @prod
+
+      while output.size < input_a.size
+        cgroup.each do |c|
+          msg = consume_with_retry(c, timeout: 1, retries: 1)
+          output[msg.value.to_i] += 1 if msg
+        end
+      end
+
+      assert_equal input_a.to_a, output.keys.sort
+
+      # restart cgroup to simulate client app deployment
+      cgroup.each { |c| c.close }
+
+      # produce some more input and assert cgroup continues where it left
+      # position (ie. does not re-consume input_a)
+      cgroup = Array.new(2) { new_consumer(topic, group) }
+      cgroup.each { |c| start_consumer!(c) }
+      input_b.each { |i| @prod.produce(topic, i) }
+      assert_flushed @prod
+
+      while output.size < input_size
+        cgroup.each do |c|
+          msg = consume_with_retry(c, timeout: 1, retries: 1)
+          output[msg.value.to_i] += 1 if msg
+        end
+      end
+
+      assert_equal input.to_a, output.keys.sort
+
+      actual_reconsumes = output.values.inject(:+) - input_size
+      assert actual_reconsumes <= reconsumes_tolerated,
+        "Expected reconsumes to be <= #{reconsumes_tolerated}, " \
+        "was #{actual_reconsumes}"
     end
   end
 end
 
-puts "\nRunning on #{host_port} " \
-     "(Client version #{Rafka::VERSION}, CONSUME_RETRIES=#{CONSUME_RETRIES}, " \
+puts "\nRunning on #{host_port.join(":")} " \
+     "(rafka-rb #{Rafka::VERSION}, CONSUME_RETRIES=#{CONSUME_RETRIES}, " \
      "CONSUME_TIMEOUT=#{CONSUME_TIMEOUT})..."
 
 $topics = []

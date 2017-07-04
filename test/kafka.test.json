@@ -14,6 +14,8 @@
  },
  "producer": {
    "go.delivery.reports": true,
-   "queue.buffering.max.ms": 0
+   "queue.buffering.max.ms": 0,
+   "message.send.max.retries": 2,
+   "retry.backoff.ms": 100
  }
 }

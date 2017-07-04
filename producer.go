@@ -95,7 +95,7 @@ func (p *Producer) run() {
 		case ev := <-p.rdProd.Events():
 			msg := ev.(*rdkafka.Message)
 			if err := msg.TopicPartition.Error; err != nil {
-				p.log.Printf("Failed to deliver `%s` to %s", msg.Value, msg)
+				p.log.Printf("Failed to deliver `%s` to %s: %s", msg.Value, msg, err)
 			}
 		}
 	}
