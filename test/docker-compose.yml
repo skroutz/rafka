@@ -1,6 +1,8 @@
 version: '2'
 services:
   rafka:
+    container_name: rafka_server
+    image: skroutz/rafka
     build:
       context: .
     hostname: rafka
