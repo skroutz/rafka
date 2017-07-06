@@ -52,13 +52,13 @@ func (s *Server) handleConn(conn net.Conn) {
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
-	var ew error
+	var writeErr error
 	for {
 		command, err := parser.ReadCommand()
 		if err != nil {
 			_, ok := err.(*redisproto.ProtocolError)
 			if ok {
-				ew = writer.WriteError(err.Error())
+				writeErr = writer.WriteError(err.Error())
 			} else {
 				break
 			}
@@ -68,18 +68,18 @@ func (s *Server) handleConn(conn net.Conn) {
 			case "BLPOP": // consume
 				topics, err := parseTopics(string(command.Get(1)))
 				if err != nil {
-					ew = writer.WriteError("CONS " + err.Error())
+					writeErr = writer.WriteError("CONS " + err.Error())
 					break
 				}
 				cons, err := c.Consumer(topics)
 				if err != nil {
-					ew = writer.WriteError("CONS " + err.Error())
+					writeErr = writer.WriteError("CONS " + err.Error())
 					break
 				}
 
-				// Setup timeout
-				// Check the last argument for an int or use the default.
-				// We do not support 0 as inf.
+				// Setup timeout: Check the last argument for
+				// an int or use the default.
+				// Note: We do not support 0 as infinity.
 				timeout := s.timeout
 				lastIdx := command.ArgCount() - 1
 				secs, err := strconv.Atoi(string(command.Get(lastIdx)))
@@ -88,45 +88,59 @@ func (s *Server) handleConn(conn net.Conn) {
 				}
 				ticker := time.NewTicker(timeout)
 
-				select {
-				case <-s.ctx.Done():
-					ew = writer.WriteError("CONS Server shutdown")
-				case msg := <-cons.Out():
-					ew = writer.WriteObjects(msgToRedis(msg)...)
-				case <-ticker.C:
-					ew = writer.WriteBulk(nil)
+			ConsLoop:
+				for {
+					select {
+					case <-s.ctx.Done():
+						writeErr = writer.WriteError("CONS Server shutdown")
+						break ConsLoop
+					case <-ticker.C:
+						writeErr = writer.WriteBulk(nil)
+						break ConsLoop
+					default:
+						ev, err := cons.Poll(100)
+						if err != nil {
+							writeErr = writer.WriteError("CONS Poll " + err.Error())
+							break ConsLoop
+						}
+						if ev == nil {
+							continue
+						}
+						writeErr = writer.WriteObjects(msgToRedis(ev)...)
+						break ConsLoop
+					}
 				}
 			case "RPUSH": // ack (consumer)
 				key := strings.ToUpper(string(command.Get(1)))
 				if key != "ACKS" {
-					ew = writer.WriteError("CONS You can only RPUSH to the 'acks' key")
+					writeErr = writer.WriteError("CONS You can only RPUSH to the 'acks' key")
 					break
 				}
 
 				topic, partition, offset, err := parseAck(string(command.Get(2)))
 				if err != nil {
-					ew = writer.WriteError("CONS " + err.Error())
+					writeErr = writer.WriteError("CONS " + err.Error())
 					break
 				}
 
 				cons, err := c.ConsumerByTopic(topic)
 				if err != nil {
-					ew = writer.WriteError("CONS " + err.Error())
+					writeErr = writer.WriteError("CONS " + err.Error())
 					break
 				}
 
 				cons.SetOffset(topic, partition, offset+1)
-				ew = writer.WriteBulkString("OK")
+				writeErr = writer.WriteBulkString("OK")
 			case "RPUSHX": // produce
 				argc := command.ArgCount() - 1
 				if argc != 2 {
-					ew = writer.WriteError("PROD RPUSHX accepts 2 arguments, got " + strconv.Itoa(argc))
+					writeErr = writer.WriteError("PROD RPUSHX accepts 2 arguments, got " + strconv.Itoa(argc))
 					break
 				}
 
 				parts := bytes.Split(command.Get(1), []byte(":"))
 				if len(parts) != 2 {
-					ew = writer.WriteError("PROD First argument must be in the form of 'topics:<topic>'")
+					writeErr = writer.WriteError("PROD First argument must be in the form of 'topics:<topic>'")
 					break
 				}
 				topic := string(parts[1])
@@ -135,34 +149,34 @@ func (s *Server) handleConn(conn net.Conn) {
 
 				prod, err := c.Producer(&cfg.Librdkafka.Producer)
 				if err != nil {
-					ew = writer.WriteError("PROD Error spawning producer: " + err.Error())
+					writeErr = writer.WriteError("PROD Error spawning producer: " + err.Error())
 					break
 				}
 
 				err = prod.Produce(kafkaMsg)
 				if err != nil {
-					ew = writer.WriteError("PROD " + err.Error())
+					writeErr = writer.WriteError("PROD " + err.Error())
 					break
 				}
-				ew = writer.WriteBulkString("OK")
+				writeErr = writer.WriteBulkString("OK")
 			case "DUMP": // flush (producer)
 				if c.producer == nil {
-					ew = writer.WriteBulkString("OK")
+					writeErr = writer.WriteBulkString("OK")
 					break
 				}
 
 				argc := command.ArgCount() - 1
 				if argc != 1 {
-					ew = writer.WriteError("PROD DUMP accepts 1 argument, got " + strconv.Itoa(argc))
+					writeErr = writer.WriteError("PROD DUMP accepts 1 argument, got " + strconv.Itoa(argc))
 					break
 				}
 
 				timeoutMs, err := strconv.Atoi(string(command.Get(1)))
 				if err != nil {
-					ew = writer.WriteError("PROD NaN")
+					writeErr = writer.WriteError("PROD NaN")
 					break
 				}
-				ew = writer.WriteInt(int64(c.producer.Flush(timeoutMs)))
+				writeErr = writer.WriteInt(int64(c.producer.Flush(timeoutMs)))
 			case "CLIENT":
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
@@ -172,37 +186,37 @@ func (s *Server) handleConn(conn net.Conn) {
 
 					_, ok := s.clientByID.Load(newID)
 					if ok {
-						ew = writer.WriteError(fmt.Sprintf("CONS id %s is already taken", newID))
+						writeErr = writer.WriteError(fmt.Sprintf("CONS id %s is already taken", newID))
 						break
 					}
 
 					err := c.SetID(newID)
 					if err != nil {
-						ew = writer.WriteError("CONS " + err.Error())
+						writeErr = writer.WriteError("CONS " + err.Error())
 						break
 					}
 					s.clientByID.Store(newID, c)
 					s.clientByID.Delete(prevID)
-					ew = writer.WriteBulkString("OK")
+					writeErr = writer.WriteBulkString("OK")
 				case "GETNAME":
-					ew = writer.WriteBulkString(c.String())
+					writeErr = writer.WriteBulkString(c.String())
 				default:
-					ew = writer.WriteError("CONS Command not supported")
+					writeErr = writer.WriteError("CONS Command not supported")
 				}
 			case "QUIT":
 				writer.WriteBulkString("OK")
 				writer.Flush()
 				return
 			case "PING":
-				ew = writer.WriteBulkString("PONG")
+				writeErr = writer.WriteBulkString("PONG")
 			default:
-				ew = writer.WriteError("Command not supported")
+				writeErr = writer.WriteError("Command not supported")
 			}
 		}
 		if command.IsLast() {
 			writer.Flush()
 		}
-		if ew != nil {
+		if writeErr != nil {
 			break
 		}
 	}

@@ -6,10 +6,11 @@
    "log.connection.close": false
  },
  "consumer": {
-   "go.events.channel.enable": true,
-   "go.application.rebalance.enable": true,
+   "go.events.channel.enable": false,
+   "go.application.rebalance.enable": false,
    "enable.auto.commit": false,
-   "auto.offset.reset": "latest"
+   "auto.offset.reset": "latest",
+   "enable.partition.eof": false
  },
  "producer": {
    "go.delivery.reports": true
