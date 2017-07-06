@@ -16,7 +16,6 @@ type Consumer struct {
 	id          string
 	consumer    *rdkafka.Consumer
 	topics      []string
-	out         chan *rdkafka.Message
 	log         *log.Logger
 	commitIntvl time.Duration
 
@@ -41,7 +40,6 @@ func NewConsumer(id string, topics []string, commitIntvl time.Duration, cfg rdka
 		id:          id,
 		topics:      topics,
 		log:         log.New(os.Stderr, fmt.Sprintf("[consumer-%s] ", id), log.Ldate|log.Ltime),
-		out:         make(chan *rdkafka.Message),
 		commitIntvl: commitIntvl,
 		offsets:     make(map[TopicPartition]rdkafka.Offset),
 		offsetIn:    make(chan OffsetEntry, 10000)}
@@ -56,20 +54,10 @@ func NewConsumer(id string, topics []string, commitIntvl time.Duration, cfg rdka
 	return &c
 }
 
-func (c *Consumer) Out() <-chan *rdkafka.Message {
-	return c.out
-}
-
 func (c *Consumer) Run(ctx context.Context) {
-	c.consumer.SubscribeTopics(c.topics, nil)
-
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-		c.run(ctx)
-	}(ctx)
+	c.consumer.SubscribeTopics(c.topics, nil)
 
 	// offset commit goroutine
 	wg.Add(1)
@@ -100,37 +88,19 @@ func (c *Consumer) Run(ctx context.Context) {
 	c.log.Println("Bye")
 }
 
-func (c *Consumer) run(ctx context.Context) {
-Loop:
-	for {
-		select {
-		case <-ctx.Done():
-			break Loop
-		case ev := <-c.consumer.Events():
-			switch e := ev.(type) {
-			case rdkafka.AssignedPartitions:
-				c.consumer.Assign(e.Partitions)
-			case rdkafka.RevokedPartitions:
-				c.consumer.Unassign()
-			case *rdkafka.Message:
-				// We cannot block on c.out, we need to make sure
-				// that we ctx.Done() is propagated correctly.
-				select {
-				case <-ctx.Done():
-					// Just swallow it, we just need to unblock.
-					// the Done() will be dealt in the top level
-					// select {}.
-				case c.out <- e:
-				}
-			case rdkafka.PartitionEOF:
-				// nothing to do in this case
-			case rdkafka.Error:
-				c.log.Printf("Error caused termination: %v", e)
-				break Loop
-			default:
-				c.log.Printf("Unhandled event: %v", e)
-			}
-		}
+func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
+	ev := c.consumer.Poll(timeoutMS)
+	if ev == nil {
+		return nil, nil
+	}
+
+	switch e := ev.(type) {
+	case *rdkafka.Message:
+		return e, nil
+	case rdkafka.Error:
+		return nil, errors.New(e.String())
+	default:
+		return nil, errors.New(fmt.Sprintf("Unknown event type: %v", e))
 	}
 }
 
