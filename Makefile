@@ -7,7 +7,7 @@ build: vet fmt test
 	go build
 
 test:
-	test/end-to-end
+	test/end-to-end -v
 
 lint:
 	golint
