@@ -14,7 +14,7 @@ host, port = host_port[0], Integer(host_port[1])
 CLIENT_DEFAULTS = { host: host, port: port }
 FLUSH_TIMEOUT = 5000
 CONSUME_RETRIES = 3
-CONSUME_TIMEOUT = 2
+CONSUME_TIMEOUT = 1
 
 class TestRafka < Minitest::Test
   def setup
@@ -158,7 +158,7 @@ class TestRafka < Minitest::Test
   def test_cgroup_reconnect_many_partitions
     partitions = 4
     input_size = 20
-    reconsumes_tolerated = partitions
+    reconsumes_tolerated = partitions + 2
     flunk "input_size must be even, given: #{input_size}" if input_size.odd?
 
     with_new_topic(partitions: partitions) do |topic|
