@@ -110,6 +110,7 @@ func (s *Server) handleConn(conn net.Conn) {
 						break ConsLoop
 					}
 				}
+				ticker.Stop()
 			case "RPUSH": // ack (consumer)
 				key := strings.ToUpper(string(command.Get(1)))
 				if key != "ACKS" {
