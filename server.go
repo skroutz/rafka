@@ -45,9 +45,9 @@ func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
 
 	c := NewClient(conn, s.manager)
-	defer s.clientByID.Delete(c.id)
 	defer c.Close()
 	s.clientByID.Store(c.id, c)
+	defer s.clientByID.Delete(c.id)
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
@@ -197,6 +197,7 @@ func (s *Server) handleConn(conn net.Conn) {
 						break
 					}
 					s.clientByID.Store(newID, c)
+					defer s.clientByID.Delete(newID)
 					s.clientByID.Delete(prevID)
 					writeErr = writer.WriteBulkString("OK")
 				case "GETNAME":
