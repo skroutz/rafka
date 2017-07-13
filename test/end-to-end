@@ -207,6 +207,27 @@ class TestRafka < Minitest::Test
         "was #{actual_reconsumes}"
     end
   end
+
+  def test_consumer_id_reclaim
+    group, id = rand_id, rand_id
+    cons = new_consumer("a-topic", group, id)
+    cons.consume(1)
+    cons.close
+
+    cons = new_consumer("a-topic", group, id)
+    cons.consume(1)
+  end
+
+  def test_consumer_id_uniqueness
+    group, id = rand_id, rand_id
+    cons1 = new_consumer("a-topic", group, id)
+    cons1.consume(1)
+
+    cons2 = new_consumer("a-topic", group, id)
+    assert_raises Rafka::ConsumeError do
+      cons2.consume(1)
+    end
+  end
 end
 
 puts "\nRunning on #{host_port.join(":")} " \

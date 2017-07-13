@@ -45,9 +45,11 @@ func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
 
 	c := NewClient(conn, s.manager)
-	defer s.clientByID.Delete(c.id)
 	defer c.Close()
 	s.clientByID.Store(c.id, c)
+	defer func() {
+		s.clientByID.Delete(c.id)
+	}()
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
@@ -110,6 +112,7 @@ func (s *Server) handleConn(conn net.Conn) {
 						break ConsLoop
 					}
 				}
+				ticker.Stop()
 			case "RPUSH": // ack (consumer)
 				key := strings.ToUpper(string(command.Get(1)))
 				if key != "ACKS" {
