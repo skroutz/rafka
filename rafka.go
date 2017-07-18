@@ -30,6 +30,7 @@ func main() {
 		cli.StringFlag{
 			Name:  "kafka, k",
 			Usage: "Load librdkafka configuration from `FILE`",
+			Value: "kafka.json",
 		},
 		cli.Int64Flag{
 			Name:  "commit-intvl, i",
