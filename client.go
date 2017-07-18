@@ -43,7 +43,7 @@ func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
 // "<consumer-group>:<consumer-id>".
 func (c *Client) SetID(id string) error {
 	if c.consReady {
-		return errors.New("CLient ID is already set to " + c.id)
+		return errors.New("Client ID is already set to " + c.id)
 	}
 
 	parts := strings.SplitN(id, ":", 2)
