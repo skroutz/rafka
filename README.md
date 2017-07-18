@@ -186,16 +186,20 @@ $ dep ensure
 ```
 
 
-Building (also run tests and performs various static checks):
+Running the Go tests:
+```shell
+$ go test
+```
+
+We also have end-to-end tests that run via Docker. Refer
+[here](test/README.md) for more information.
+
+
+Run tests (must have done `make spawn` before), perform various static checks
+and finally build the project:
 ```shell
 $ make
 ```
-
-Running the tests:
-```shell
-$ make test
-```
-(Refer [here](test/README.md) for more information on testing Rafka).
 
 List all available commands:
 ```shell

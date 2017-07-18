@@ -10,3 +10,6 @@
   name = "github.com/secmask/go-redisproto"
   revision = "14323b204640af1628764b06726c64fe040998e1"
 
+[[constraint]]
+  name = "github.com/go-redis/redis"
+  version = "6.5.3"
