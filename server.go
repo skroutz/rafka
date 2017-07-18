@@ -161,7 +161,7 @@ func (s *Server) handleConn(conn net.Conn) {
 					writeErr = writer.WriteError("PROD " + err.Error())
 					break
 				}
-				writeErr = writer.WriteBulkString("OK")
+				writeErr = writer.WriteInt(1)
 			case "DUMP": // flush (producer)
 				if c.producer == nil {
 					writeErr = writer.WriteBulkString("OK")
