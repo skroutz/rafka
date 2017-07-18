@@ -16,7 +16,10 @@ import (
 	"github.com/urfave/cli"
 )
 
-var cfg Config
+var (
+	cfg      Config
+	shutdown = make(chan os.Signal, 1)
+)
 
 func main() {
 	app := cli.NewApp()
@@ -108,8 +111,7 @@ func main() {
 func run(c *cli.Context) {
 	l := log.New(os.Stderr, "[rafka] ", log.Ldate|log.Ltime)
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	ctx := context.Background()
 
@@ -139,7 +141,7 @@ func run(c *cli.Context) {
 
 	}()
 
-	<-sigCh
+	<-shutdown
 	l.Println("Received shutdown signal. Shutting down...")
 	serverCancel()
 	serverWg.Wait()
