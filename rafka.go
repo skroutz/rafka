@@ -28,6 +28,16 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
+			Name:  "host",
+			Usage: "Host to listen to",
+			Value: "0.0.0.0",
+		},
+		cli.IntFlag{
+			Name:  "port, p",
+			Usage: "Port to listen to",
+			Value: 6380,
+		},
+		cli.StringFlag{
 			Name:  "kafka, k",
 			Usage: "Load librdkafka configuration from `FILE`",
 			Value: "kafka.json",
@@ -61,6 +71,14 @@ func main() {
 			return errors.New("`commit-intvl` option must be greater than 0")
 		}
 		cfg.CommitIntvl = time.Duration(c.Int64("commit-intvl"))
+
+		// cfg might be set before main() runs (eg. while testing)
+		if cfg.Host == "" {
+			cfg.Host = c.String("host")
+		}
+		if cfg.Port == 0 {
+			cfg.Port = c.Int("port")
+		}
 
 		// republish config using rdkafka.SetKey() for proper error checking
 		for _, config := range []rdkafka.ConfigMap{cfg.Librdkafka.Consumer, cfg.Librdkafka.Producer} {
@@ -135,7 +153,7 @@ func run(c *cli.Context) {
 	serverWg.Add(1)
 	go func() {
 		defer serverWg.Done()
-		err := rafka.ListenAndServe(":6380")
+		err := rafka.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
 		if err != nil {
 			log.Fatal(err)
 		}

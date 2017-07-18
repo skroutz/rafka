@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/go-redis/redis"
@@ -8,7 +9,7 @@ import (
 
 func TestSetIDTwice(t *testing.T) {
 	c := redis.NewClient(&redis.Options{
-		Addr: "localhost:6380",
+		Addr: fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		OnConnect: func(c *redis.Conn) error {
 			res := c.ClientSetName("foobar:foo2")
 			if res.Err() != nil {

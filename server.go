@@ -240,13 +240,12 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 }
 
-func (s *Server) ListenAndServe(port string) error {
-	// TODO(agis): maybe we want to control host through a flag
-	listener, err := net.Listen("tcp", port)
+func (s *Server) ListenAndServe(hostport string) error {
+	listener, err := net.Listen("tcp", hostport)
 	if err != nil {
 		return err
 	}
-	s.log.Print("Listening on 0.0.0.0" + port)
+	s.log.Print("Listening on " + hostport)
 
 	go func() {
 		<-s.ctx.Done() // unblock Accept()

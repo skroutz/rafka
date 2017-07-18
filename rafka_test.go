@@ -14,12 +14,17 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	cfg.Port = 6382
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		main()
 		wg.Done()
 	}()
+
+	for newClient("wait:for-rafka").Ping().Val() != "PONG" {
+	}
 
 	result := m.Run()
 	shutdown <- os.Interrupt
@@ -103,7 +108,7 @@ func TestSETNAME(t *testing.T) {
 
 func newClient(id string) *redis.Client {
 	return redis.NewClient(&redis.Options{
-		Addr:      "localhost:6380",
+		Addr:      fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		OnConnect: setName(id)})
 }
 
