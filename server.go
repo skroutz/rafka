@@ -67,7 +67,10 @@ func (s *Server) handleConn(conn net.Conn) {
 		} else {
 			cmd := strings.ToUpper(string(command.Get(0)))
 			switch cmd {
-			case "BLPOP": // consume
+			// Consume the next message from one or more topics
+			//
+			// BLPOP topics:<topic> <timeoutMs>
+			case "BLPOP":
 				topics, err := parseTopics(string(command.Get(1)))
 				if err != nil {
 					writeErr = writer.WriteError("CONS " + err.Error())
@@ -113,7 +116,10 @@ func (s *Server) handleConn(conn net.Conn) {
 					}
 				}
 				ticker.Stop()
-			case "RPUSH": // ack (consumer)
+			// Commit offsets for the given topic/partition
+			//
+			// RPUSH acks <topic>:<partition>:<offset>
+			case "RPUSH":
 				key := strings.ToUpper(string(command.Get(1)))
 				if key != "ACKS" {
 					writeErr = writer.WriteError("CONS You can only RPUSH to the 'acks' key")
@@ -134,7 +140,10 @@ func (s *Server) handleConn(conn net.Conn) {
 
 				cons.SetOffset(topic, partition, offset+1)
 				writeErr = writer.WriteBulkString("OK")
-			case "RPUSHX": // produce
+			// Produce a message
+			//
+			// RPUSHX topics:<topic> <message>
+			case "RPUSHX":
 				argc := command.ArgCount() - 1
 				if argc != 2 {
 					writeErr = writer.WriteError("PROD RPUSHX accepts 2 arguments, got " + strconv.Itoa(argc))
@@ -162,7 +171,10 @@ func (s *Server) handleConn(conn net.Conn) {
 					break
 				}
 				writeErr = writer.WriteInt(1)
-			case "DUMP": // flush (producer)
+			// Flush the producer
+			//
+			// DUMP <timeoutMs>
+			case "DUMP":
 				if c.producer == nil {
 					writeErr = writer.WriteBulkString("OK")
 					break
@@ -183,6 +195,9 @@ func (s *Server) handleConn(conn net.Conn) {
 			case "CLIENT":
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
+				// Set the consumer group.id
+				//
+				// CLIENT SETNAME <group.id>:<name>
 				case "SETNAME":
 					prevID := c.id
 					newID := string(command.Get(2))

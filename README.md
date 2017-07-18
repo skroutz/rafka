@@ -147,7 +147,7 @@ Example using Redis:
 ### Consumer
 - `CLIENT SETNAME <group.id>:<name>`: sets the consumer's group & name
 - `CLIENT GETNAME`
-- `BLPOP topics:<topic> <timeoutMs>`: consumes the next message from <topic>
+- `BLPOP topics:<topic> <timeoutMs>`: consumes the next message from the given topic
 - `RPUSH acks <topic>:<partition>:<offset>`: commit the offset for the given topic/partition
 
 Example using Redis:
