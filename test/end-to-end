@@ -11,7 +11,7 @@ require_relative "test_helper"
 host_port = (ENV["RAFKA"] || "localhost:6380").split(":")
 host, port = host_port[0], Integer(host_port[1])
 
-CLIENT_DEFAULTS = { host: host, port: port }
+CLIENT_DEFAULTS = { host: host, port: port, redis: { reconnect_attempts: 5 } }
 FLUSH_TIMEOUT = 5000
 CONSUME_RETRIES = 3
 CONSUME_TIMEOUT = 1
