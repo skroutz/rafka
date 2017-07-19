@@ -139,7 +139,8 @@ func (s *Server) handleConn(conn net.Conn) {
 				}
 
 				cons.SetOffset(topic, partition, offset+1)
-				writeErr = writer.WriteBulkString("OK")
+
+				writeErr = writer.WriteInt(1)
 			// Produce a message
 			//
 			// RPUSHX topics:<topic> <message>
