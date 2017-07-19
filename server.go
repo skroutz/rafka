@@ -138,7 +138,11 @@ func (s *Server) handleConn(conn net.Conn) {
 					break
 				}
 
-				cons.SetOffset(topic, partition, offset+1)
+				err = cons.SetOffset(topic, partition, offset+1)
+				if err != nil {
+					writeErr = writer.WriteError("CONS " + err.Error())
+					break
+				}
 
 				writeErr = writer.WriteInt(1)
 			// Produce a message

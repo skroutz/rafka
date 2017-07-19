@@ -54,6 +54,27 @@ func TestConsumerTopicExclusive(t *testing.T) {
 	}
 }
 
+func TestConsumerOffsetCommit(t *testing.T) {
+	cases := [][]string{
+		{"acks", "sometopic:1:-5"},
+		{"acks", "sometopic:1:foo"},
+		{"acks", "sometopic:10"},
+		{"acks", "sometopic"},
+		{"wrongkey", "sometopic:1:5"},
+	}
+
+	c := newClient("foo:offset")
+	// spawn the consumer
+	c.BLPop(1*time.Second, "topics:sometopic").Result()
+
+	for _, args := range cases {
+		_, err := c.RPush(args[0], args[1]).Result()
+		if err == nil {
+			t.Errorf("Expected error for `%v %v`, got nothing", args[0], args[1])
+		}
+	}
+}
+
 func TestErrRPUSHX(t *testing.T) {
 	c := newClient("some:producer")
 
