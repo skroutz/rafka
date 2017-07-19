@@ -4,6 +4,9 @@ import "time"
 import rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 
 type Config struct {
+	Host string
+	Port int
+
 	Librdkafka struct {
 		General  rdkafka.ConfigMap `json:"general"`
 		Consumer rdkafka.ConfigMap `json:"consumer"`
