@@ -217,5 +217,5 @@ $ make list
 
 License
 -------------------------------------------------------------------------------
-Rafka is licensed under MIT. See [LICENSE](LICENSE).
+Rafka is released under the GNU General Public License version 3. See [COPYING](COPYING).
 
