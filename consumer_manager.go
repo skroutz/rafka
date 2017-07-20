@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
@@ -73,6 +74,15 @@ func (m *ConsumerManager) GetOrCreate(cid ConsumerID, gid string, topics []strin
 			}
 		}
 		err := kafkaCfg.SetKey("group.id", gid)
+		if err != nil {
+			m.log.Printf("Error configuring consumer: %s", err)
+		}
+
+		// Extract the consumer name from the client id.
+		// We know by client.Consumer() that cid is in the form of
+		// "<group:name>|<topics>"
+		cidNoTopics := strings.Split(strings.Split(string(cid), "|")[0], ":")[1]
+		err = kafkaCfg.SetKey("client.id", cidNoTopics)
 		if err != nil {
 			m.log.Printf("Error configuring consumer: %s", err)
 		}
