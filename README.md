@@ -147,7 +147,7 @@ Example using Redis:
 ### Consumer
 - `CLIENT SETNAME <group.id>:<name>`: sets the consumer's group & name
 - `CLIENT GETNAME`
-- `BLPOP topics:<topic> <timeoutMs>`: consumes the next message from <topic>
+- `BLPOP topics:<topic> <timeoutMs>`: consumes the next message from the given topic
 - `RPUSH acks <topic>:<partition>:<offset>`: commit the offset for the given topic/partition
 
 Example using Redis:
@@ -186,16 +186,20 @@ $ dep ensure
 ```
 
 
-Building (also run tests and performs various static checks):
+Running the Go tests:
+```shell
+$ go test
+```
+
+We also have end-to-end tests that run via Docker. Refer
+[here](test/README.md) for more information.
+
+
+Run tests (must have done `make spawn` before), perform various static checks
+and finally build the project:
 ```shell
 $ make
 ```
-
-Running the tests:
-```shell
-$ make test
-```
-(Refer [here](test/README.md) for more information on testing Rafka).
 
 List all available commands:
 ```shell
@@ -213,5 +217,5 @@ $ make list
 
 License
 -------------------------------------------------------------------------------
-Rafka is licensed under MIT. See [LICENSE](LICENSE).
+Rafka is released under the GNU General Public License version 3. See [COPYING](COPYING).
 

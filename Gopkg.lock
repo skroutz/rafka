@@ -8,6 +8,12 @@
   version = "v0.9.4"
 
 [[projects]]
+  name = "github.com/go-redis/redis"
+  packages = [".","internal","internal/consistenthash","internal/hashtag","internal/pool","internal/proto"]
+  revision = "da63fe7def48e378caf9539abf64b9b1e37bc01e"
+  version = "v6.5.3"
+
+[[projects]]
   name = "github.com/secmask/go-redisproto"
   packages = ["."]
   revision = "14323b204640af1628764b06726c64fe040998e1"
@@ -27,6 +33,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e921d588bb6f8afc166c55654355ba40ed7babec664ff37d87476d6ba76d4e44"
+  inputs-digest = "9db747fd00718ac51a727f7091577219d4adaac6d7e55d9a2fc4974affcbeed3"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -27,6 +27,9 @@ Then start the Rafka container (inside this directory):
 $ docker-compose up
 ```
 
+(Note: Additionally, you can use `make spawn` from the root project directory
+to spin up a rafka server without using docker-compose)
+
 Finally, run the tests:
 ```shell
 $ ./end-to-end

@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     golang-golang-x-sync-dev
 
 ENV GOPATH /usr/share/gocode
+ENV GOTRACEBACK crash
 
 VOLUME ["/rafka"]
 WORKDIR "/rafka"

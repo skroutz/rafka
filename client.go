@@ -1,3 +1,17 @@
+// Copyright 2017 Skroutz S.A.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
@@ -43,7 +57,7 @@ func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
 // "<consumer-group>:<consumer-id>".
 func (c *Client) SetID(id string) error {
 	if c.consReady {
-		return errors.New("CLient ID is already set to " + c.id)
+		return errors.New("Client ID is already set to " + c.id)
 	}
 
 	parts := strings.SplitN(id, ":", 2)

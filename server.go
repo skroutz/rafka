@@ -1,3 +1,17 @@
+// Copyright (C) 2017 Skroutz S.A.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
@@ -67,7 +81,10 @@ func (s *Server) handleConn(conn net.Conn) {
 		} else {
 			cmd := strings.ToUpper(string(command.Get(0)))
 			switch cmd {
-			case "BLPOP": // consume
+			// Consume the next message from one or more topics
+			//
+			// BLPOP topics:<topic> <timeoutMs>
+			case "BLPOP":
 				topics, err := parseTopics(string(command.Get(1)))
 				if err != nil {
 					writeErr = writer.WriteError("CONS " + err.Error())
@@ -113,7 +130,10 @@ func (s *Server) handleConn(conn net.Conn) {
 					}
 				}
 				ticker.Stop()
-			case "RPUSH": // ack (consumer)
+			// Commit offsets for the given topic/partition
+			//
+			// RPUSH acks <topic>:<partition>:<offset>
+			case "RPUSH":
 				key := strings.ToUpper(string(command.Get(1)))
 				if key != "ACKS" {
 					writeErr = writer.WriteError("CONS You can only RPUSH to the 'acks' key")
@@ -132,9 +152,17 @@ func (s *Server) handleConn(conn net.Conn) {
 					break
 				}
 
-				cons.SetOffset(topic, partition, offset+1)
-				writeErr = writer.WriteBulkString("OK")
-			case "RPUSHX": // produce
+				err = cons.SetOffset(topic, partition, offset+1)
+				if err != nil {
+					writeErr = writer.WriteError("CONS " + err.Error())
+					break
+				}
+
+				writeErr = writer.WriteInt(1)
+			// Produce a message
+			//
+			// RPUSHX topics:<topic> <message>
+			case "RPUSHX":
 				argc := command.ArgCount() - 1
 				if argc != 2 {
 					writeErr = writer.WriteError("PROD RPUSHX accepts 2 arguments, got " + strconv.Itoa(argc))
@@ -161,8 +189,11 @@ func (s *Server) handleConn(conn net.Conn) {
 					writeErr = writer.WriteError("PROD " + err.Error())
 					break
 				}
-				writeErr = writer.WriteBulkString("OK")
-			case "DUMP": // flush (producer)
+				writeErr = writer.WriteInt(1)
+			// Flush the producer
+			//
+			// DUMP <timeoutMs>
+			case "DUMP":
 				if c.producer == nil {
 					writeErr = writer.WriteBulkString("OK")
 					break
@@ -183,6 +214,9 @@ func (s *Server) handleConn(conn net.Conn) {
 			case "CLIENT":
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
+				// Set the consumer group.id
+				//
+				// CLIENT SETNAME <group.id>:<name>
 				case "SETNAME":
 					prevID := c.id
 					newID := string(command.Get(2))
@@ -225,13 +259,12 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 }
 
-func (s *Server) ListenAndServe(port string) error {
-	// TODO(agis): maybe we want to control host through a flag
-	listener, err := net.Listen("tcp", port)
+func (s *Server) ListenAndServe(hostport string) error {
+	listener, err := net.Listen("tcp", hostport)
 	if err != nil {
 		return err
 	}
-	s.log.Print("Listening on 0.0.0.0" + port)
+	s.log.Print("Listening on " + hostport)
 
 	go func() {
 		<-s.ctx.Done() // unblock Accept()

@@ -1,3 +1,19 @@
+// Rafka: Kafka exposed with a Redis API
+//
+// Copyright 2017 Skroutz S.A.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
@@ -16,7 +32,10 @@ import (
 	"github.com/urfave/cli"
 )
 
-var cfg Config
+var (
+	cfg      Config
+	shutdown = make(chan os.Signal, 1)
+)
 
 func main() {
 	app := cli.NewApp()
@@ -25,8 +44,19 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
+			Name:  "host",
+			Usage: "Host to listen to",
+			Value: "0.0.0.0",
+		},
+		cli.IntFlag{
+			Name:  "port, p",
+			Usage: "Port to listen to",
+			Value: 6380,
+		},
+		cli.StringFlag{
 			Name:  "kafka, k",
 			Usage: "Load librdkafka configuration from `FILE`",
+			Value: "kafka.json",
 		},
 		cli.Int64Flag{
 			Name:  "commit-intvl, i",
@@ -57,6 +87,14 @@ func main() {
 			return errors.New("`commit-intvl` option must be greater than 0")
 		}
 		cfg.CommitIntvl = time.Duration(c.Int64("commit-intvl"))
+
+		// cfg might be set before main() runs (eg. while testing)
+		if cfg.Host == "" {
+			cfg.Host = c.String("host")
+		}
+		if cfg.Port == 0 {
+			cfg.Port = c.Int("port")
+		}
 
 		// republish config using rdkafka.SetKey() for proper error checking
 		for _, config := range []rdkafka.ConfigMap{cfg.Librdkafka.Consumer, cfg.Librdkafka.Producer} {
@@ -108,8 +146,7 @@ func main() {
 func run(c *cli.Context) {
 	l := log.New(os.Stderr, "[rafka] ", log.Ldate|log.Ltime)
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	ctx := context.Background()
 
@@ -132,14 +169,14 @@ func run(c *cli.Context) {
 	serverWg.Add(1)
 	go func() {
 		defer serverWg.Done()
-		err := rafka.ListenAndServe(":6380")
+		err := rafka.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
 		if err != nil {
 			log.Fatal(err)
 		}
 
 	}()
 
-	<-sigCh
+	<-shutdown
 	l.Println("Received shutdown signal. Shutting down...")
 	serverCancel()
 	serverWg.Wait()
