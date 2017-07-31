@@ -22,5 +22,8 @@ func TestSetIDTwice(t *testing.T) {
 			return nil
 		}})
 
-	c.Ping().Result()
+	_, err := c.Ping().Result()
+	if err != nil {
+		t.Fatal(err)
+	}
 }

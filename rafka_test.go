@@ -65,7 +65,10 @@ func TestConsumerOffsetCommit(t *testing.T) {
 
 	c := newClient("foo:offset")
 	// spawn the consumer
-	c.BLPop(1*time.Second, "topics:sometopic").Result()
+	_, err := c.BLPop(1*time.Second, "topics:sometopic").Result()
+	if err != nil && err != redis.Nil {
+		t.Fatal(err)
+	}
 
 	for _, args := range cases {
 		_, err := c.RPush(args[0], args[1]).Result()

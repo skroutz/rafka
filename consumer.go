@@ -71,7 +71,10 @@ func NewConsumer(id string, topics []string, commitIntvl time.Duration, cfg rdka
 func (c *Consumer) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 
-	c.consumer.SubscribeTopics(c.topics, nil)
+	err := c.consumer.SubscribeTopics(c.topics, nil)
+	if err != nil {
+		c.log.Println("Could not subcribe consume to topics : ", err)
+	}
 
 	// offset commit goroutine
 	wg.Add(1)
@@ -95,7 +98,7 @@ func (c *Consumer) Run(ctx context.Context) {
 
 	c.log.Printf("Started working...")
 	wg.Wait()
-	err := c.consumer.Close()
+	err = c.consumer.Close()
 	if err != nil {
 		c.log.Printf("Error closing: %s", err)
 	}

@@ -65,7 +65,7 @@ func main() {
 		},
 	}
 
-	app.Before = func(c *cli.Context) error {
+	app.Before = func(c *cli.Context) (err error) {
 		if c.String("kafka") == "" {
 			return cli.NewExitError("No librdkafka configuration provided!", 1)
 		}
@@ -74,7 +74,13 @@ func main() {
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+
+		defer func() {
+			closeErr := f.Close()
+			if err == nil {
+				err = closeErr
+			}
+		}()
 
 		dec := json.NewDecoder(f)
 		dec.UseNumber()
@@ -132,15 +138,16 @@ func main() {
 			}
 		}
 
-		return nil
+		return
 	}
 
 	app.Action = func(c *cli.Context) error {
 		run(c)
 		return nil
 	}
-
-	app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func run(c *cli.Context) {

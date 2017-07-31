@@ -56,8 +56,6 @@ func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Durat
 }
 
 func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close()
-
 	c := NewClient(conn, s.manager)
 	defer c.Close()
 	s.clientByID.Store(c.id, c)
@@ -241,8 +239,16 @@ func (s *Server) handleConn(conn net.Conn) {
 					writeErr = writer.WriteError("CONS Command not supported")
 				}
 			case "QUIT":
-				writer.WriteBulkString("OK")
-				writer.Flush()
+				writeErr = writer.WriteBulkString("OK")
+				if writeErr != nil {
+					s.log.Println("Could not write OK to client: ", err)
+				} else {
+					err := writer.Flush()
+					if err != nil {
+						s.log.Println("Could not flush writer: ", err)
+					}
+				}
+
 				return
 			case "PING":
 				writeErr = writer.WriteBulkString("PONG")
@@ -251,7 +257,10 @@ func (s *Server) handleConn(conn net.Conn) {
 			}
 		}
 		if command.IsLast() {
-			writer.Flush()
+			err = writer.Flush()
+			if err != nil {
+				s.log.Println("Could not flush writer: ", err)
+			}
 		}
 		if writeErr != nil {
 			break
@@ -268,7 +277,10 @@ func (s *Server) ListenAndServe(hostport string) error {
 
 	go func() {
 		<-s.ctx.Done() // unblock Accept()
-		listener.Close()
+		err := listener.Close()
+		if err != nil {
+			s.log.Println("Listener Close Error: ", err)
+		}
 
 		closeFunc := func(id, client interface{}) bool {
 			c, ok := client.(*Client)
@@ -280,7 +292,10 @@ func (s *Server) ListenAndServe(hostport string) error {
 			// not having a selectable channel for reading input.
 			// We're stuck with blocking on ReadCommand() and
 			// unblocking it by closing the client's connection.
-			c.conn.Close()
+			err := c.conn.Close()
+			if err != nil {
+				s.log.Println("Client connection close error:, ", err)
+			}
 			s.clientByID.Delete(c.id)
 			return true
 		}
@@ -305,6 +320,10 @@ Loop:
 				go func() {
 					defer s.inFlight.Done()
 					s.handleConn(conn)
+					err := conn.Close()
+					if err != nil {
+						s.log.Println("Connection close error: ", err)
+					}
 				}()
 			}
 		}
