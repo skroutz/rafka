@@ -40,6 +40,7 @@ var (
 func main() {
 	app := cli.NewApp()
 	app.Name = "rafka"
+	app.Usage = "Kafka with a Redis API"
 	app.HideVersion = true
 
 	app.Flags = []cli.Flag{
