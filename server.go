@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -327,7 +326,7 @@ func parseTopics(key string) ([]string, error) {
 		if len(topics) > 0 {
 			return topics, nil
 		}
-		return nil, errors.New(fmt.Sprintf("Not enough topics in `%s`", key))
+		return nil, fmt.Errorf("Not enough topics in `%s`", key)
 	default:
 		return nil, fmt.Errorf("Cannot parse topics from `%s`", key)
 	}

@@ -61,11 +61,7 @@ func (p *Producer) Produce(msg *rdkafka.Message) error {
 		p.log.Printf("Started working...")
 	}
 
-	err := p.rdProd.Produce(msg, nil)
-	if err != nil {
-		return err
-	}
-	return nil
+	return p.rdProd.Produce(msg, nil)
 }
 
 // Flush flushes any remaining messages. It blocks until all messages are
