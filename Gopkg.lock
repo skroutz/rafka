@@ -4,8 +4,8 @@
 [[projects]]
   name = "github.com/confluentinc/confluent-kafka-go"
   packages = ["kafka"]
-  revision = "a9b5c269c66e9a2eb5f195563b2f01e65a84c527"
-  version = "v0.9.4"
+  revision = "f696f02dcbb04d95b103c5b848bb15f749a996f7"
+  version = "v0.11.0"
 
 [[projects]]
   name = "github.com/go-redis/redis"
@@ -33,6 +33,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5c3720cc061e4bf55477fd93e942d61ab7a6ca9499024faec68f3e4643f3c5db"
+  inputs-digest = "96e740a5280385e6371eb89af9394c09f2a2d80f7c7cdd84aab94c9fbed17c1d"
   solver-name = "gps-cdcl"
   solver-version = 1
