@@ -1,3 +1,21 @@
+rafka (0.0.4-1) stretch; urgency=medium
+
+  [ Agis Anastasopoulos ]
+  * test: Upgrade minitest
+  * Pin urfave/cli to 0.18.1
+
+  [ Dimitris Bachtis ]
+  * Fix app help text & provide meaningful description.
+
+  [ Agis Anastasopoulos ]
+  * Apply megacheck lint suggestions
+
+  [ Christos Trochalakis ]
+  * gbp: Make sure gbp configuration is applied in all commands
+  * gbp: Explicitly set upstream-branch to master
+
+ -- Agis Anastasopoulos <agis@skroutz.gr>  Tue, 08 Aug 2017 13:20:53 +0300
+
 rafka (0.0.3-1) stretch; urgency=medium
 
   * New upstream release
