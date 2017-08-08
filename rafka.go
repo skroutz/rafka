@@ -40,6 +40,7 @@ var (
 func main() {
 	app := cli.NewApp()
 	app.Name = "rafka"
+	app.Usage = "Kafka with a Redis API"
 	app.HideVersion = true
 
 	app.Flags = []cli.Flag{
@@ -105,14 +106,14 @@ func main() {
 				}
 				err = config.SetKey(k, v)
 				if err != nil {
-					return errors.New(fmt.Sprintf("Error in librdkafka config (%s): %s", k, err))
+					return fmt.Errorf("Error in librdkafka config (%s): %s", k, err)
 				}
 			}
 
 			for k, v := range config {
 				err = config.SetKey(k, v)
 				if err != nil {
-					return errors.New(fmt.Sprintf("Error in librdkafka config (%s): %s", k, err))
+					return fmt.Errorf("Error in librdkafka config (%s): %s", k, err)
 				}
 			}
 		}
@@ -124,11 +125,11 @@ func main() {
 			}
 			chSize, err := chSizeNumber.Int64()
 			if err != nil {
-				return errors.New(fmt.Sprintf("Error converting go.events.channel.size to int: %s", err))
+				return fmt.Errorf("Error converting go.events.channel.size to int: %s", err)
 			}
 			err = cfg.Librdkafka.Consumer.SetKey("go.events.channel.size", int(chSize))
 			if err != nil {
-				return errors.New(fmt.Sprintf("Error setting go.events.channel.size: %s", err))
+				return fmt.Errorf("Error setting go.events.channel.size: %s", err)
 			}
 		}
 

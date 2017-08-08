@@ -114,7 +114,7 @@ func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
 	case rdkafka.Error:
 		return nil, errors.New(e.String())
 	default:
-		return nil, errors.New(fmt.Sprintf("Unknown event type: %v", e))
+		return nil, fmt.Errorf("Unknown event type: %v", e)
 	}
 }
 
@@ -123,7 +123,7 @@ func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
 // in the background).
 func (c *Consumer) SetOffset(topic string, partition int32, pos rdkafka.Offset) error {
 	if pos < 0 {
-		return errors.New(fmt.Sprintf("offset cannot be negative, got %d", pos))
+		return fmt.Errorf("offset cannot be negative, got %d", pos)
 	}
 	c.offsetIn <- OffsetEntry{TopicPartition{topic, partition}, pos}
 	return nil

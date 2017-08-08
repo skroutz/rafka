@@ -101,7 +101,7 @@ func TestSETNAME(t *testing.T) {
 
 			res, err := c.ClientGetName().Result()
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 
 			replies <- res
