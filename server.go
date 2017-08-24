@@ -176,7 +176,7 @@ func (s *Server) handleConn(conn net.Conn) {
 				tp := rdkafka.TopicPartition{Topic: &topic, Partition: rdkafka.PartitionAny}
 				kafkaMsg := &rdkafka.Message{TopicPartition: tp, Value: command.Get(2)}
 
-				prod, err := c.Producer(&cfg.Librdkafka.Producer)
+				prod, err := c.Producer(cfg.Librdkafka.Producer)
 				if err != nil {
 					writeErr = writer.WriteError("PROD Error spawning producer: " + err.Error())
 					break
