@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 )
@@ -28,8 +29,7 @@ type Producer struct {
 	rdProd  *rdkafka.Producer
 	log     *log.Logger
 	started bool
-
-	close, done chan struct{}
+	wg      sync.WaitGroup
 }
 
 func NewProducer(cfg *rdkafka.ConfigMap) (*Producer, error) {
@@ -42,11 +42,9 @@ func NewProducer(cfg *rdkafka.ConfigMap) (*Producer, error) {
 
 	return &Producer{
 		id:      id,
-		close:   make(chan struct{}),
 		rdProd:  rdProd,
 		log:     log.New(os.Stderr, fmt.Sprintf("[%s] ", id), log.Ldate|log.Ltime),
-		started: false,
-		done:    make(chan struct{})}, nil
+		started: false}, nil
 
 }
 
@@ -56,7 +54,8 @@ func (p *Producer) String() string {
 
 func (p *Producer) Produce(msg *rdkafka.Message) error {
 	if !p.started {
-		go p.run()
+		p.wg.Add(1)
+		go p.consumeDeliveries()
 		p.started = true
 		p.log.Printf("Started working...")
 	}
@@ -75,38 +74,24 @@ func (p *Producer) Flush(timeoutMs int) int {
 // Close stops p after flushing any buffered messages. It is a blocking
 // operation.
 func (p *Producer) Close() {
-	p.close <- struct{}{}
-	<-p.done
+	unflushed := p.rdProd.Flush(5000)
+	if unflushed > 0 {
+		p.log.Printf("Flush timeout: %d unflushed events", unflushed)
+	}
+	// signal consumeDeliveries() to exit by closing p.rdProd.Events()
+	// channel
+	p.rdProd.Close()
+	p.wg.Wait()
 	p.log.Print("Bye")
 }
 
-// run logs message delivery failures. It also performs cleans up tasks when p
-// is closed.
-func (p *Producer) run() {
-	for {
-		select {
-		case <-p.close:
-			// TODO(agis) make this configurable?
-			unflushed := p.rdProd.Flush(5000)
-			if unflushed > 0 {
-				p.log.Printf("Flush timeout: %d unflushed events", unflushed)
-			}
-			select {
-			case ev := <-p.rdProd.Events():
-				msg := ev.(*rdkafka.Message)
-				if err := msg.TopicPartition.Error; err != nil {
-					p.log.Printf("Failed to deliver %v", msg)
-				}
-			default:
-			}
-			p.rdProd.Close()
-			p.done <- struct{}{}
-			return
-		case ev := <-p.rdProd.Events():
-			msg := ev.(*rdkafka.Message)
-			if err := msg.TopicPartition.Error; err != nil {
-				p.log.Printf("Failed to deliver `%s` to %s: %s", msg.Value, msg, err)
-			}
+func (p *Producer) consumeDeliveries() {
+	defer p.wg.Done()
+
+	for ev := range p.rdProd.Events() {
+		msg := ev.(*rdkafka.Message)
+		if err := msg.TopicPartition.Error; err != nil {
+			p.log.Printf("Failed to deliver `%s` to %s: %s", msg.Value, msg, err)
 		}
 	}
 }
