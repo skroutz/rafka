@@ -132,8 +132,8 @@ func (c *Client) Producer(cfg *rdkafka.ConfigMap) (*Producer, error) {
 	return c.producer, nil
 }
 
-// Close closes c's underlying producers and consumers. Calling Close on
-// an already closed client will result in a panic.
+// Close closes producers, consumers and the connection of c.
+// Calling Close on an already closed client will result in a panic.
 func (c *Client) Close() {
 	for cid := range c.consumers {
 		// TODO(agis): make this blocking
@@ -143,4 +143,6 @@ func (c *Client) Close() {
 	if c.producer != nil {
 		c.producer.Close()
 	}
+
+	c.conn.Close()
 }
