@@ -55,10 +55,9 @@ func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Durat
 }
 
 func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close()
-
 	c := NewClient(conn, s.manager)
 	defer c.Close()
+
 	s.clientByID.Store(c.id, c)
 	defer func() {
 		s.clientByID.Delete(c.id)
