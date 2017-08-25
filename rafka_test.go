@@ -23,7 +23,16 @@ func TestMain(m *testing.M) {
 		wg.Done()
 	}()
 
-	for newClient("wait:for-rafka").Ping().Val() != "PONG" {
+	c := newClient("wait:for-rafka")
+	serverReady := false
+	for i := 0; i <= 3 && !serverReady; i++ {
+		serverReady = c.Ping().Val() == "PONG"
+		time.Sleep(300 * time.Millisecond)
+	}
+
+	if !serverReady {
+		log.Fatal("Server not ready in time")
+		os.Exit(1)
 	}
 
 	result := m.Run()
