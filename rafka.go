@@ -133,6 +133,20 @@ func main() {
 			}
 		}
 
+		// We don't use the channel-based producer API, but even then
+		// confluent-kafka-go still preallocates a channel with the
+		// default buffer size of 1000000. Thus, this reduces memory
+		// usage significantly, especially in the case of many,
+		// short-lived producers.
+		//
+		// NOTE: If we ever want to change to the channel-based
+		// producer API, this should be set via the config file
+		// instead.
+		err = cfg.Librdkafka.Producer.SetKey("go.produce.channel.size", 0)
+		if err != nil {
+			return fmt.Errorf("Error setting go.produce.channel.size: %s", err)
+		}
+
 		return nil
 	}
 
