@@ -138,7 +138,8 @@ func TestSETNAME(t *testing.T) {
 
 func newClient(id string) *redis.Client {
 	return redis.NewClient(&redis.Options{
-		Addr:      fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+		// TODO Add the ability to read host and port from a cfg file
+		Addr:      fmt.Sprintf("%s:%d", "localhost", 6382),
 		OnConnect: setName(id)})
 }
 
