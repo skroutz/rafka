@@ -136,9 +136,33 @@ func TestSETNAME(t *testing.T) {
 	}
 }
 
+func TestConcurrentProducers(t *testing.T) {
+	var wg sync.WaitGroup
+	numProd := 5
+
+	wg.Add(numProd)
+
+	for i := 0; i < numProd; i++ {
+		go func(n int) {
+			defer wg.Done()
+
+			c := newClient(fmt.Sprintf("some:producer-%d", n))
+
+			c.RPushX("topic:foo", "a msg").Result()
+
+			err := c.Close()
+			if err != nil {
+				t.Error(err)
+			}
+		}(i)
+	}
+	wg.Wait()
+}
+
 func newClient(id string) *redis.Client {
 	return redis.NewClient(&redis.Options{
-		Addr:      fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+		// TODO Add the ability to read host and port from a cfg file
+		Addr:      fmt.Sprintf("%s:%d", "localhost", 6382),
 		OnConnect: setName(id)})
 }
 

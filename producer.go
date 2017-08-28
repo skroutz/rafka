@@ -32,8 +32,8 @@ type Producer struct {
 	wg      sync.WaitGroup
 }
 
-func NewProducer(cfg *rdkafka.ConfigMap) (*Producer, error) {
-	rdProd, err := rdkafka.NewProducer(cfg)
+func NewProducer(cfg rdkafka.ConfigMap) (*Producer, error) {
+	rdProd, err := rdkafka.NewProducer(&cfg)
 	if err != nil {
 		return nil, err
 	}
