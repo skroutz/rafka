@@ -89,9 +89,13 @@ func (p *Producer) consumeDeliveries() {
 	defer p.wg.Done()
 
 	for ev := range p.rdProd.Events() {
-		msg := ev.(*rdkafka.Message)
-		if err := msg.TopicPartition.Error; err != nil {
-			p.log.Printf("Failed to deliver `%s` to %s: %s", msg.Value, msg, err)
+		msg, ok := ev.(*rdkafka.Message)
+		if ok {
+			if err := msg.TopicPartition.Error; err != nil {
+				p.log.Printf("Failed to deliver `%s` to %s: %s", msg.Value, msg, err)
+			}
+		} else {
+			p.log.Printf("Unknown event type: %s", ev)
 		}
 	}
 }
