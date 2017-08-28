@@ -7,7 +7,7 @@ build: vet fmt test
 	go build
 
 test:
-	go test
+	go test -race
 	test/end-to-end -v
 
 lint:
