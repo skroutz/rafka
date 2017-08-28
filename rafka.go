@@ -133,6 +133,21 @@ func main() {
 			}
 		}
 
+		if cfg.Librdkafka.Producer["go.events.channel.size"] != nil {
+			chSizeNumber, ok := cfg.Librdkafka.Producer["go.events.channel.size"].(json.Number)
+			if !ok {
+				return errors.New("Error converting go.events.channel.size to int")
+			}
+			chSize, err := chSizeNumber.Int64()
+			if err != nil {
+				return fmt.Errorf("Error converting go.events.channel.size to int: %s", err)
+			}
+			err = cfg.Librdkafka.Producer.SetKey("go.events.channel.size", int(chSize))
+			if err != nil {
+				return fmt.Errorf("Error setting go.events.channel.size: %s", err)
+			}
+		}
+
 		// We don't use the channel-based producer API, but even then
 		// confluent-kafka-go still preallocates a channel with the
 		// default buffer size of 1000000. Thus, this reduces memory

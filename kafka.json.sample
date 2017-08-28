@@ -13,6 +13,7 @@
    "enable.partition.eof": false
  },
  "producer": {
-   "go.delivery.reports": true
+   "go.delivery.reports": true,
+   "go.events.channel.size": 1000
  }
 }
