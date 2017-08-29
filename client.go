@@ -117,14 +117,24 @@ func (c *Client) ConsumerByTopic(topic string) (*Consumer, error) {
 
 // Producer returns c's producer. If c does not have a producer assigned yet,
 // a new one is created and assigned to it.
-func (c *Client) Producer(cfg *rdkafka.ConfigMap) (*Producer, error) {
+func (c *Client) Producer(cfg rdkafka.ConfigMap) (*Producer, error) {
 	var err error
 
 	if c.producer != nil {
 		return c.producer, nil
 	}
 
-	c.producer, err = NewProducer(cfg)
+	// reusing the same config between producers causes:
+	// fatal error: concurrent map read and map write
+	kafkaCfg := rdkafka.ConfigMap{}
+	for k, v := range cfg {
+		err := kafkaCfg.SetKey(k, v)
+		if err != nil {
+			c.log.Printf("Error configuring producer: %s", err)
+		}
+	}
+
+	c.producer, err = NewProducer(kafkaCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -132,8 +142,8 @@ func (c *Client) Producer(cfg *rdkafka.ConfigMap) (*Producer, error) {
 	return c.producer, nil
 }
 
-// Close closes c's underlying producers and consumers. Calling Close on
-// an already closed client will result in a panic.
+// Close closes producers, consumers and the connection of c.
+// Calling Close on an already closed client will result in a panic.
 func (c *Client) Close() {
 	for cid := range c.consumers {
 		// TODO(agis): make this blocking
@@ -143,4 +153,6 @@ func (c *Client) Close() {
 	if c.producer != nil {
 		c.producer.Close()
 	}
+
+	c.conn.Close()
 }

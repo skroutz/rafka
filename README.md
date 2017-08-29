@@ -37,7 +37,7 @@ use in production environments until we reach the [1.x series](https://github.co
 Dependencies
 -------------------------------------------------------------------------------
 - [Go 1.8 or later](https://golang.org/)
-- [librdkafka](https://github.com/edenhill/librdkafka)
+- [librdkafka 0.11.0 or later](https://github.com/edenhill/librdkafka)
 
 
 
@@ -59,7 +59,7 @@ Getting Started
 3. Run it:
    ```shell
    $ rafka -k kafka.json.sample
-   [rafka] 2017/06/26 11:07:23 Spawning Consumer Manager (librdkafka 0.9.5)...
+   [rafka] 2017/06/26 11:07:23 Spawning Consumer Manager (librdkafka 0.11.0)...
    [server] 2017/06/26 11:07:23 Listening on 0.0.0.0:6380
    ```
 

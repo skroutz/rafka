@@ -23,7 +23,16 @@ func TestMain(m *testing.M) {
 		wg.Done()
 	}()
 
-	for newClient("wait:for-rafka").Ping().Val() != "PONG" {
+	c := newClient("wait:for-rafka")
+	serverReady := false
+	for i := 0; i <= 3 && !serverReady; i++ {
+		serverReady = c.Ping().Val() == "PONG"
+		time.Sleep(300 * time.Millisecond)
+	}
+
+	if !serverReady {
+		log.Fatal("Server not ready in time")
+		os.Exit(1)
 	}
 
 	result := m.Run()
@@ -127,9 +136,33 @@ func TestSETNAME(t *testing.T) {
 	}
 }
 
+func TestConcurrentProducers(t *testing.T) {
+	var wg sync.WaitGroup
+	numProd := 5
+
+	wg.Add(numProd)
+
+	for i := 0; i < numProd; i++ {
+		go func(n int) {
+			defer wg.Done()
+
+			c := newClient(fmt.Sprintf("some:producer-%d", n))
+
+			c.RPushX("topic:foo", "a msg").Result()
+
+			err := c.Close()
+			if err != nil {
+				t.Error(err)
+			}
+		}(i)
+	}
+	wg.Wait()
+}
+
 func newClient(id string) *redis.Client {
 	return redis.NewClient(&redis.Options{
-		Addr:      fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+		// TODO Add the ability to read host and port from a cfg file
+		Addr:      fmt.Sprintf("%s:%d", "localhost", 6382),
 		OnConnect: setName(id)})
 }
 
