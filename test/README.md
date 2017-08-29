@@ -17,7 +17,6 @@ The easiest way to run the tests is by using Docker and
 [kafka-cluster-testbed](https://github.com/skroutz/kafka-cluster-testbed):
 
 First, start the Kafka cluster from kafka-cluster-testbed:
-
 ```shell
 kafka-cluster-testbed/ $ docker-compose up
 ```
@@ -44,3 +43,15 @@ Specifying the Rafka server to connect to (default is "localhost:6380"):
 ```shell
 $ RAFKA=127.0.0.1:6381 ./end-to-end
 ```
+
+## Updating dependencies
+To update dependencies (eg. when a new librdkafka version is out) you have to
+rebuild the docker image without using the cache:
+
+```shell
+$ docker-compose build --no-cache
+```
+
+It's good to do this once in a while since there may be new versions out.
+
+
