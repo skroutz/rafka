@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 10),
                dh-golang,
                dh-exec,
                golang-1.8-go,
-               golang-github-confluentinc-confluent-kafka-go-dev,
+               golang-github-confluentinc-confluent-kafka-go-dev (>> 0.11.0+git20170826.15.9fa7efc-1~),
                golang-github-secmask-go-redisproto-dev,
                golang-github-urfave-cli-dev,
                golang-golang-x-sync-dev
