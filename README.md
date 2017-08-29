@@ -38,6 +38,7 @@ Dependencies
 -------------------------------------------------------------------------------
 - [Go 1.8 or later](https://golang.org/)
 - [librdkafka 0.11.0 or later](https://github.com/edenhill/librdkafka)
+- for the rest see `Gopkg.toml`
 
 
 
