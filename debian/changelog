@@ -1,3 +1,30 @@
+rafka (0.0.5-1) stretch; urgency=medium
+
+  [ Christos Trochalakis ]
+  * Bump confluent-kafka-go dependency to 0.11.0
+
+  [ Agis Anastasopoulos ]
+  * Make Client responsible for closing its conn
+  * producer: Make ProduceChannel unbuffered
+  * test: Don't wait for server to boot indefinitely
+  * producer: Consume event channel in a goroutine
+  * Avoid panics due to type assertion
+
+  [ Mpampis Kostas ]
+  * Fix configuration data race in tests
+  * make: Run go tests using -race
+  * producer: Fix data race on configuration
+
+  [ Agis Anastasopoulos ]
+  * dep: Pin confluent-kafka-go to 9fa7efcf0471e6d18d6
+  * Enable race detector during end-to-end tests
+  * Add instructions for updating test dependencies
+
+  [ Mpampis Kostas ]
+  * debian: Restrict kafka driver's version range
+
+ -- Mpampis Kostas <charkost@skroutz.gr>  Tue, 29 Aug 2017 15:35:36 +0300
+
 rafka (0.0.4-1) stretch; urgency=medium
 
   [ Agis Anastasopoulos ]
