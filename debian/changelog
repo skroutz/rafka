@@ -1,3 +1,10 @@
+rafka (0.0.6-1) stretch; urgency=medium
+
+  * Limit producer events channel buffer
+  * Mention dep in README
+
+ -- Agis Anastasopoulos <agis.anast@gmail.com>  Tue, 29 Aug 2017 16:15:43 +0300
+
 rafka (0.0.5-1) stretch; urgency=medium
 
   [ Christos Trochalakis ]
