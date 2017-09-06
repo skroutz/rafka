@@ -63,6 +63,7 @@ func TestConsumerTopicExclusive(t *testing.T) {
 	}
 }
 
+// RPUSH
 func TestConsumerOffsetCommit(t *testing.T) {
 	cases := [][]string{
 		{"acks", "sometopic:1:-5"},
@@ -84,7 +85,8 @@ func TestConsumerOffsetCommit(t *testing.T) {
 	}
 }
 
-func TestErrRPUSHX(t *testing.T) {
+// RPUSHX
+func TestProduceErr(t *testing.T) {
 	c := newClient("some:producer")
 
 	_, err := c.RPushX("invalid-arg", "a msg").Result()
@@ -98,7 +100,8 @@ func TestErrRPUSHX(t *testing.T) {
 	}
 }
 
-func TestSETNAME(t *testing.T) {
+// SETNAME
+func TestClientID(t *testing.T) {
 	numReq := 100
 	replies := make(chan string)
 
@@ -157,6 +160,25 @@ func TestConcurrentProducers(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
+}
+
+// HGETALL
+func TestStatsQuery(t *testing.T) {
+	p := newClient("someone:foo")
+	v, err := p.HGetAll("stats").Result()
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = strconv.Atoi(v["producer.delivery.errors"])
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = strconv.Atoi(v["producer.unflushed.messages"])
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func newClient(id string) *redis.Client {
