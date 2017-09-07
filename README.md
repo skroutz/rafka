@@ -121,15 +121,6 @@ $ go build && ./rafka -k ./kafka.json.sample -i 10
 
 API
 ------------------------------------------------------------------------------
-Generic commands:
-
-- [`PING`](https://redis.io/commands/ping) (no arguments)
-- [`QUIT`](https://redis.io/commands/quit)
-
-
-
-
-
 
 ### Producer
 - `RPUSHX topics:<topic> <message>`: produce a message
@@ -168,6 +159,24 @@ Example using Redis:
 127.0.0.1:6380> rpush acks greetings:2:10
 "OK"
 ```
+
+
+
+
+
+
+### Generic
+
+- [`PING`](https://redis.io/commands/ping)
+- [`QUIT`](https://redis.io/commands/quit)
+- `HGETALL stats`: returns a hash with various statistics. Typically used for
+  monitoring.
+
+
+
+
+
+
 
 
 

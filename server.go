@@ -128,6 +128,16 @@ func (s *Server) handleConn(conn net.Conn) {
 					}
 				}
 				ticker.Stop()
+			// Get producer/consumer statistics
+			//
+			// HGETALL stats
+			case "HGETALL":
+				key := strings.ToUpper(string(command.Get(1)))
+				if key != "STATS" {
+					writeErr = writer.WriteError("ERR Expected key to be 'stats', got " + key)
+					break
+				}
+				writeErr = writer.WriteObjects(stats.toRedis()...)
 			// Commit offsets for the given topic/partition
 			//
 			// RPUSH acks <topic>:<partition>:<offset>
@@ -252,6 +262,7 @@ func (s *Server) handleConn(conn net.Conn) {
 			writer.Flush()
 		}
 		if writeErr != nil {
+			// TODO(agis) log these errors
 			break
 		}
 	}
@@ -294,7 +305,7 @@ Loop:
 			conn, err := listener.Accept()
 			if err != nil {
 				// we know that closing a listener that blocks
-				// on accepts will return this error
+				// on Accept() will return this error
 				if !strings.Contains(err.Error(), "use of closed network connection") {
 					s.log.Println("Accept error: ", err)
 				}
@@ -357,12 +368,12 @@ func msgToRedis(msg *rdkafka.Message) []interface{} {
 	tp := msg.TopicPartition
 
 	return []interface{}{
-		[]byte("topic"),
-		[]byte(*tp.Topic),
-		[]byte("partition"),
+		"topic",
+		*tp.Topic,
+		"partition",
 		int64(tp.Partition),
-		[]byte("offset"),
+		"offset",
 		int64(tp.Offset),
-		[]byte("value"),
+		"value",
 		msg.Value}
 }

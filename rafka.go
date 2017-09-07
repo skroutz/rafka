@@ -34,6 +34,7 @@ import (
 
 var (
 	cfg      Config
+	stats    Stats
 	shutdown = make(chan os.Signal, 1)
 )
 
