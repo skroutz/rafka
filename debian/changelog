@@ -1,3 +1,10 @@
+rafka (0.0.7-1) stretch; urgency=medium
+
+  * Implement stats command
+  * Use strings instead of slices
+
+ -- Agis Anastasopoulos <agis.anast@gmail.com>  Thu, 07 Sep 2017 16:08:31 +0300
+
 rafka (0.0.6-1) stretch; urgency=medium
 
   * Limit producer events channel buffer
