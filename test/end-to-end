@@ -231,7 +231,7 @@ class TestRafka < Minitest::Test
 
   def test_stats
     stats = @prod.redis.hgetall("stats")
-    assert stats.count > 0
+    assert stats.size > 0
     stats.keys.each { |k| assert_kind_of String, k }
     stats.values.each { |v| assert_kind_of Integer, Integer(v) }
   end

@@ -367,14 +367,13 @@ func parseAck(ack string) (string, int32, rdkafka.Offset, error) {
 func msgToRedis(msg *rdkafka.Message) []interface{} {
 	tp := msg.TopicPartition
 
-	// TODO(agis): convert slices to strings
 	return []interface{}{
-		[]byte("topic"),
-		[]byte(*tp.Topic),
-		[]byte("partition"),
+		"topic",
+		*tp.Topic,
+		"partition",
 		int64(tp.Partition),
-		[]byte("offset"),
+		"offset",
 		int64(tp.Offset),
-		[]byte("value"),
+		"value",
 		msg.Value}
 }
