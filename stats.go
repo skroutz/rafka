@@ -32,3 +32,8 @@ func (s *Stats) toRedis() []interface{} {
 		strconv.FormatInt(atomic.LoadInt64(&s.producerErr), 10),
 	}
 }
+
+func (s *Stats) Reset() {
+	atomic.StoreInt64(&s.producerUnflushed, 0)
+	atomic.StoreInt64(&s.producerErr, 0)
+}
