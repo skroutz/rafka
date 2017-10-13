@@ -235,6 +235,16 @@ class TestRafka < Minitest::Test
     stats.keys.each { |k| assert_kind_of String, k }
     stats.values.each { |v| assert_kind_of Integer, Integer(v) }
   end
+
+  def test_stats_reset
+    @prod.redis.del("stats")
+    @prod.produce("foo", "asemas")
+    sleep 0.5
+    assert_equal @prod.redis.hgetall("stats")["producer.delivery.errors"], "1"
+
+    @prod.redis.del("stats")
+    assert @prod.redis.hgetall("stats")["producer.delivery.errors"], "0"
+  end
 end
 
 puts "\nRunning on #{host_port.join(":")} " \
