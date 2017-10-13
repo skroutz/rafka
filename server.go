@@ -138,6 +138,17 @@ func (s *Server) handleConn(conn net.Conn) {
 					break
 				}
 				writeErr = writer.WriteObjects(stats.toRedis()...)
+			// Reset producer/consumer statistics
+			//
+			// DEL stats
+			case "DEL":
+				key := strings.ToUpper(string(command.Get(1)))
+				if key != "STATS" {
+					writeErr = writer.WriteError("ERR Expected key to be 'stats', got " + key)
+					break
+				}
+				stats.Reset()
+				writeErr = writer.WriteInt(1)
 			// Commit offsets for the given topic/partition
 			//
 			// RPUSH acks <topic>:<partition>:<offset>

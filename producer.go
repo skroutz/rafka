@@ -78,7 +78,7 @@ func (p *Producer) Close() {
 	unflushed := p.rdProd.Flush(5000)
 	if unflushed > 0 {
 		p.log.Printf("Flush timeout: %d unflushed events", unflushed)
-		atomic.AddInt64(&stats.producerUnflushed, int64(unflushed))
+		atomic.AddUint64(&stats.producerUnflushed, uint64(unflushed))
 	}
 	// signal consumeDeliveries() to exit by closing p.rdProd.Events()
 	// channel
@@ -95,11 +95,11 @@ func (p *Producer) consumeDeliveries() {
 		if ok {
 			if err := msg.TopicPartition.Error; err != nil {
 				p.log.Printf("Failed to deliver `%s` to %s: %s", msg.Value, msg, err)
-				atomic.AddInt64(&stats.producerErr, 1)
+				atomic.AddUint64(&stats.producerErr, 1)
 			}
 		} else {
 			p.log.Printf("Unknown event type: %s", ev)
-			atomic.AddInt64(&stats.producerErr, 1)
+			atomic.AddUint64(&stats.producerErr, 1)
 		}
 	}
 }
