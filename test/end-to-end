@@ -39,6 +39,24 @@ class TestRafka < Minitest::Test
     end
   end
 
+  def test_produce_with_key
+    with_new_topic(consumer: true) do |topic, cons|
+      start_consumer!(cons)
+
+      100.times { |i| @prod.produce(topic, i, key: 'foo') }
+      assert_flushed @prod
+
+      partitions = []
+      100.times do |i|
+        msg = consume_with_retry(cons)
+        assert_rafka_msg msg
+        partitions << msg.partition
+      end
+
+      assert_equal 1, partitions.uniq.size
+    end
+  end
+
   def test_many_consumers_same_topic
     with_new_topic do |topic|
       gid = rand_id

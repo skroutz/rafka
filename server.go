@@ -189,13 +189,18 @@ func (s *Server) handleConn(conn net.Conn) {
 				}
 
 				parts := bytes.Split(command.Get(1), []byte(":"))
-				if len(parts) != 2 {
-					writeErr = writer.WriteError("PROD First argument must be in the form of 'topics:<topic>'")
+				if len(parts) != 2 && len(parts) != 3 {
+					errMsg := "PROD First argument must be in the form of 'topics:<topic>' or 'topics:<topic>:<key>'"
+					writeErr = writer.WriteError(errMsg)
 					break
 				}
 				topic := string(parts[1])
 				tp := rdkafka.TopicPartition{Topic: &topic, Partition: rdkafka.PartitionAny}
 				kafkaMsg := &rdkafka.Message{TopicPartition: tp, Value: command.Get(2)}
+
+				if len(parts) == 3 {
+					kafkaMsg.Key = parts[2]
+				}
 
 				prod, err := c.Producer(cfg.Librdkafka.Producer)
 				if err != nil {
