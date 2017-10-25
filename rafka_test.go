@@ -100,6 +100,20 @@ func TestProduceErr(t *testing.T) {
 	}
 }
 
+func TestProduceWithKey(t *testing.T) {
+	c := newClient("some:producer")
+
+	_, err := c.RPushX("topic:foo:bar", "a msg").Result()
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = c.Close()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 // SETNAME
 func TestClientID(t *testing.T) {
 	numReq := 100

@@ -123,7 +123,8 @@ API
 ------------------------------------------------------------------------------
 
 ### Producer
-- `RPUSHX topics:<topic> <message>`: produce a message
+- `RPUSHX topics:<topic> <message>`: produce a message. The message will be assigned to a random partition.
+- `RPUSHX topics:<topic>:<key> <message>`: produce a message with a key. Two or more messages with the same key will always be assigned to the same partition.
 - `DUMP <timeoutMs>`: flushes the messages to Kafka. This is a blocking operation, it returns until all buffered messages are flushed or the timeout exceeds
 
 Example using Redis:
