@@ -16,4 +16,4 @@ services:
 networks:
   default:
     external:
-      name: kafkacluster_default
+      name: kafkaclustertestbed_default
