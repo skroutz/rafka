@@ -77,7 +77,7 @@ func (p *Producer) Flush(timeoutMs int) int {
 func (p *Producer) Close() {
 	unflushed := p.rdProd.Flush(5000)
 	if unflushed > 0 {
-		p.log.Printf("Flush timeout: %d unflushed events", unflushed)
+		p.log.Printf("Error flushing: %d unflushed events", unflushed)
 		atomic.AddUint64(&stats.producerUnflushed, uint64(unflushed))
 	}
 	// signal consumeDeliveries() to exit by closing p.rdProd.Events()
@@ -94,11 +94,11 @@ func (p *Producer) consumeDeliveries() {
 		msg, ok := ev.(*rdkafka.Message)
 		if ok {
 			if err := msg.TopicPartition.Error; err != nil {
-				p.log.Printf("Failed to deliver `%s` to %s: %s", msg.Value, msg, err)
+				p.log.Printf("Error delivering `%s` to %s: %s", msg.Value, msg, err)
 				atomic.AddUint64(&stats.producerErr, 1)
 			}
 		} else {
-			p.log.Printf("Unknown event type: %s", ev)
+			p.log.Printf("Error consuming delivery event: Unknown event type (%s)", ev)
 			atomic.AddUint64(&stats.producerErr, 1)
 		}
 	}
