@@ -1,3 +1,21 @@
+rafka (0.0.9-1) stretch; urgency=medium
+
+  [ Agis Anastasopoulos ]
+  * stats: Add end-to-end test for reset feature
+
+  [ Mpampis Kostas ]
+  * Add support for message keys in the producer
+  * Test against rafka-rb@0.0.9
+  * test: Update kafka cluster docker network
+
+  [ Agis Anastasopoulos ]
+  * producer: Start error messages with "Error:"
+  * Bump max FDs limit to 16k
+  * Always return an int as a reply to flush
+  * make: Update docker network name
+
+ -- Agis Anastasopoulos <agis.anast@gmail.com>  Tue, 14 Nov 2017 17:05:48 +0200
+
 rafka (0.0.8-1) stretch; urgency=medium
 
   [ Christos Trochalakis ]
