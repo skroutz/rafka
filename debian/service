@@ -13,6 +13,7 @@ PrivateTmp=yes
 PrivateDevices=yes
 ProtectHome=yes
 ReadOnlyPaths=/
+LimitNOFILE=16384
 
 [Install]
 WantedBy=multi-user.target
