@@ -219,7 +219,7 @@ func (s *Server) handleConn(conn net.Conn) {
 			// DUMP <timeoutMs>
 			case "DUMP":
 				if c.producer == nil {
-					writeErr = writer.WriteBulkString("OK")
+					writeErr = writer.WriteInt(0)
 					break
 				}
 
