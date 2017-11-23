@@ -114,7 +114,8 @@ func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
 	case rdkafka.Error:
 		return nil, errors.New(e.String())
 	default:
-		return nil, fmt.Errorf("Unknown event type: %v", e)
+		c.log.Printf("Unknown event type: %T", e)
+		return nil, nil
 	}
 }
 
