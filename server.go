@@ -12,6 +12,9 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
+// +build go1.9
+
 package main
 
 import (
@@ -29,9 +32,6 @@ import (
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	redisproto "github.com/secmask/go-redisproto"
-
-	// TODO(agis): get rid of this when we upgrade to 1.9
-	"golang.org/x/sync/syncmap"
 )
 
 type Server struct {
@@ -42,7 +42,7 @@ type Server struct {
 	timeout  time.Duration
 
 	// clientByID contains the currently connected clients to the server.
-	clientByID syncmap.Map // map[string]*Client
+	clientByID sync.Map // map[string]*Client
 }
 
 func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Duration) *Server {
