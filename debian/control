@@ -5,11 +5,10 @@ Maintainer: Mpampis Kostas <charkost.rb@gmail.com>
 Build-Depends: debhelper (>= 10),
                dh-golang,
                dh-exec,
-               golang-1.8-go,
+               golang-any (>= 1.9),
                golang-github-confluentinc-confluent-kafka-go-dev (>> 0.11.0+git20170826.15.9fa7efc-1~),
                golang-github-secmask-go-redisproto-dev,
                golang-github-urfave-cli-dev,
-               golang-golang-x-sync-dev
 Standards-Version: 3.9.8
 Homepage: https://github.com/skroutz/rafka
 Vcs-Browser: https://github.com/skroutz/rafka
