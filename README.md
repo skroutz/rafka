@@ -36,7 +36,7 @@ use in production environments until we reach the [1.x series](https://github.co
 
 Dependencies
 -------------------------------------------------------------------------------
-- [Go 1.8 or later](https://golang.org/)
+- [Go 1.9 or later](https://golang.org/)
 - [librdkafka 0.11.0 or later](https://github.com/edenhill/librdkafka)
 - for the rest see `Gopkg.toml`
 

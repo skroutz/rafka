@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/skroutz/rafka-rb
-  revision: f197fc6924c2588e87c5c1523fd642cd6507fd36
+  revision: 03893c3312d940090b1b7a8de7e17a5f08668e1f
   specs:
     rafka (0.0.9)
       redis (~> 3.0)
@@ -8,7 +8,7 @@ GIT
 GEM
   remote: https://rubygems.org/
   specs:
-    minitest (5.10.3)
+    minitest (5.11.1)
     redis (3.0.3)
 
 PLATFORMS

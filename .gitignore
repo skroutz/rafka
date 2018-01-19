@@ -1,4 +1,5 @@
 .vimrc
 kafka.json
 rafka
+test/dump.rdb
 vendor
