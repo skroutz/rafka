@@ -21,6 +21,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -81,14 +82,15 @@ func (s *Server) handleConn(conn net.Conn) {
 			switch cmd {
 			// Consume the next message from one or more topics
 			//
-			// BLPOP topics:<topic> <timeoutMs>
+			// BLPOP topics:<topic>:<JSON-encoded consumer config> <timeoutMs>
 			case "BLPOP":
-				topics, err := parseTopics(string(command.Get(1)))
+				arg1 := string(command.Get(1))
+				topics, cfg, err := parseTopicsAndConfig(arg1)
 				if err != nil {
 					writeErr = writer.WriteError("CONS " + err.Error())
 					break
 				}
-				cons, err := c.Consumer(topics)
+				cons, err := c.Consumer(topics, cfg)
 				if err != nil {
 					writeErr = writer.WriteError("CONS " + err.Error())
 					break
@@ -341,21 +343,28 @@ Loop:
 	return nil
 }
 
-func parseTopics(key string) ([]string, error) {
-	parts := strings.SplitN(key, ":", 2)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("Cannot parse topics from `%s`", key)
+// parseTopicsAndConfig parses the "topics:topic1,topic2:{config}" into
+// an array of topics and a config map
+func parseTopicsAndConfig(s string) ([]string, rdkafka.ConfigMap, error) {
+	parts := strings.SplitN(s, ":", 3)
+	if len(parts) < 2 || parts[0] != "topics" {
+		return nil, nil, fmt.Errorf("Cannot parse topics from `%s`", s)
 	}
-	switch parts[0] {
-	case "topics":
-		topics := strings.Split(parts[1], ",")
-		if len(topics) > 0 {
-			return topics, nil
+
+	topics := strings.Split(parts[1], ",")
+	if len(topics) == 0 {
+		return nil, nil, fmt.Errorf("Not enough topics in `%s`", s)
+	}
+
+	var rdconfig rdkafka.ConfigMap
+	if len(parts) == 3 && parts[2] != "" {
+		err := json.Unmarshal([]byte(parts[2]), &rdconfig)
+		if err != nil {
+			return nil, nil, fmt.Errorf("Cannot parse JSON config from %s, error: %s", parts[2], err)
 		}
-		return nil, fmt.Errorf("Not enough topics in `%s`", key)
-	default:
-		return nil, fmt.Errorf("Cannot parse topics from `%s`", key)
 	}
+
+	return topics, rdconfig, nil
 }
 
 func parseAck(ack string) (string, int32, rdkafka.Offset, error) {
