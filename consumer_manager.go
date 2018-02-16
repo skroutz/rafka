@@ -59,7 +59,7 @@ func (m *ConsumerManager) Run() {
 
 // GetOrCreate returns the Consumer denoted by cid. If such a Consumer does not
 // exist, a new one is created.
-func (m *ConsumerManager) GetOrCreate(cid ConsumerID, gid string, topics []string) *Consumer {
+func (m *ConsumerManager) GetOrCreate(cid ConsumerID, gid string, topics []string, cfg rdkafka.ConfigMap) (*Consumer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -70,12 +70,18 @@ func (m *ConsumerManager) GetOrCreate(cid ConsumerID, gid string, topics []strin
 		for k, v := range m.cfg.Librdkafka.Consumer {
 			err := kafkaCfg.SetKey(k, v)
 			if err != nil {
-				m.log.Printf("Error configuring consumer: %s", err)
+				return nil, err
+			}
+		}
+		for k, v := range cfg {
+			err := kafkaCfg.SetKey(k, v)
+			if err != nil {
+				return nil, err
 			}
 		}
 		err := kafkaCfg.SetKey("group.id", gid)
 		if err != nil {
-			m.log.Printf("Error configuring consumer: %s", err)
+			return nil, err
 		}
 
 		// Extract the consumer name from the client id.
@@ -84,10 +90,13 @@ func (m *ConsumerManager) GetOrCreate(cid ConsumerID, gid string, topics []strin
 		cidNoTopics := strings.Split(strings.Split(string(cid), "|")[0], ":")[1]
 		err = kafkaCfg.SetKey("client.id", cidNoTopics)
 		if err != nil {
-			m.log.Printf("Error configuring consumer: %s", err)
+			return nil, err
 		}
 
-		c := NewConsumer(string(cid), topics, kafkaCfg)
+		c, err := NewConsumer(string(cid), topics, kafkaCfg)
+		if err != nil {
+			return nil, err
+		}
 		ctx, cancel := context.WithCancel(m.ctx)
 		m.pool[cid] = &consumerPoolEntry{
 			consumer: c,
@@ -101,7 +110,7 @@ func (m *ConsumerManager) GetOrCreate(cid ConsumerID, gid string, topics []strin
 		}(ctx)
 	}
 
-	return m.pool[cid].consumer
+	return m.pool[cid].consumer, nil
 }
 
 func (m *ConsumerManager) ByID(cid ConsumerID) (*Consumer, error) {
