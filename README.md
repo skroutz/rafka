@@ -212,11 +212,6 @@ and finally build the project:
 $ make
 ```
 
-List all available commands:
-```shell
-$ make list
-```
-
 
 
 
