@@ -26,11 +26,6 @@ Using Rafka we can:
 
 
 
-Status
--------------------------------------------------------------------------------
-This project is under heavy development and is _not_ recommended for
-use in production environments until we reach the [1.x series](https://github.com/skroutz/rafka/milestone/1).
-
 
 
 
