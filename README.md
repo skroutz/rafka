@@ -21,7 +21,7 @@ Using Rafka we can:
   in languages that lack a proper Kafka driver or do not provide
   concurrency primitives to implement buffering and other optimizations. Furthermore,
   writing a Rafka client is much easier than writing a Kafka client. For a
-  Ruby driver see [rafka-rb](https://github.com/skroutz/rafka-rb).
+  list of available drivers see [_Drivers_](#Drivers).
 
 
 
@@ -175,6 +175,10 @@ Example using Redis:
 
 
 
+Drivers
+-------------------------------------------------------------------------------
+
+- Ruby: [rafka-rb](https://github.com/skroutz/rafka-rb)
 
 
 
