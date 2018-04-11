@@ -21,7 +21,7 @@ Using Rafka we can:
   in languages that lack a proper Kafka driver or do not provide
   concurrency primitives to implement buffering and other optimizations. Furthermore,
   writing a Rafka client is much easier than writing a Kafka client. For a
-  list of available drivers see [_Drivers_](#Drivers).
+  list of available drivers see [_Drivers_](#drivers).
 
 
 
