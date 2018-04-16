@@ -23,6 +23,9 @@ Using Rafka we can:
   writing a Rafka client is much easier than writing a Kafka client. For a
   list of available drivers see [_Drivers_](#drivers).
 
+Refer to [*"Introducing Kafka to a Rails application"*](https://engineering.skroutz.gr/blog/kafka-rails-integration/)
+for more information.
+
 
 
 
