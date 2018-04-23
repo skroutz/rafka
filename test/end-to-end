@@ -263,6 +263,69 @@ class TestRafka < Minitest::Test
     @prod.redis.del("stats")
     assert @prod.redis.hgetall("stats")["producer.delivery.errors"], "0"
   end
+
+  def test_consumer_manual_commit
+    with_new_topic(consumer: true, partitions: 2) do |topic|
+      n = 50
+      abort "n (#{n}) must be an even number" if n.odd?
+
+      gid = rand_id
+
+      cons = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(
+        topic: topic, group: gid, id: "a", auto_commit: false))
+      start_consumer!(cons)
+
+      n.times { |i| @prod.produce(topic, i) }
+      assert_flushed @prod
+
+      partition_offsets = Hash.new(0)
+      msg = nil
+
+      # do a plain consume of all messages, without committing offsets
+      n.times do
+        msg = consume_with_retry(cons)
+        assert_rafka_msg(msg)
+        partition_offsets[msg.partition] = msg.offset
+      end
+
+      # restart consumer; we should start without any initial offsets since
+      # we didn't commit
+      cons.close
+      msg = consume_with_retry(cons)
+      assert_equal 0, msg.offset
+      cons.close
+
+      # restart and consume again; this time commit offsets
+      partition_msgs = {}
+      n.times do
+        msg = consume_with_retry(cons)
+        assert_rafka_msg(msg)
+        partition_offsets[msg.partition] = msg.offset
+        partition_msgs[msg.partition] = msg
+      end
+      res = cons.commit(*partition_msgs.values)
+      assert_equal n, res[topic].values.inject(:+)+2
+
+      # restart and consume; we should start with the previous offsets since
+      # we did commit. We check every partition we previously had committed
+      # for.
+      checked_partitions = {}
+      cons.close
+
+      n.times { |i| @prod.produce(topic, i) }
+      assert_flushed @prod
+
+      while checked_partitions.keys.sort != partition_offsets.keys.sort
+        msg = consume_with_retry(cons)
+        assert_rafka_msg(msg)
+        next if checked_partitions[msg.partition]
+        assert_equal partition_offsets[msg.partition], msg.offset-1
+        checked_partitions[msg.partition] = true
+      end
+
+      cons.close
+    end
+  end
 end
 
 puts "\nRunning on #{host_port.join(":")} " \
