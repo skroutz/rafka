@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/skroutz/rafka-rb
-  revision: c3842497921243f47d45aa91cbb5c4df96d9bef0
+  revision: ce1c2bb0d5f47bb6f4bbaabf4f3ba13f0be968f2
   specs:
     rafka (0.0.10)
       redis (~> 3.0)
