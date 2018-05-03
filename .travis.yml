@@ -1,0 +1,27 @@
+language: go
+
+go:
+- 1.10.x
+
+services:
+- docker
+
+before_install:
+- git clone https://github.com/skroutz/kafka-cluster-testbed.git
+    && cd kafka-cluster-testbed
+    && docker-compose up --build -d
+    && cd $TRAVIS_BUILD_DIR
+- wget -qO - http://packages.confluent.io/deb/3.3/archive.key | sudo apt-key add -
+- sudo add-apt-repository "deb [arch=amd64] http://packages.confluent.io/deb/4.1 stable main"
+- sudo apt-get -y update && sudo apt-get install -y librdkafka-dev
+- curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+
+install:
+- dep ensure -v
+- cp test/kafka.test.json kafka.json
+- cd test
+    && docker-compose up --build -d
+    && cd $TRAVIS_BUILD_DIR
+
+script:
+- make
