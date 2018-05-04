@@ -9,7 +9,7 @@ services:
     volumes:
       - ../:/rafka
     ports:
-      - 6380:6380
+      - 6381:6380
 
 networks:
   default:
