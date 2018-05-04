@@ -459,9 +459,15 @@ puts "\nRunning on #{host_port.join(":")} " \
      "(rafka-rb #{Rafka::VERSION}, CONSUME_RETRIES=#{CONSUME_RETRIES}, " \
      "CONSUME_TIMEOUT=#{CONSUME_TIMEOUT})..."
 
-if Rafka::Producer.new(CLIENT_DEFAULTS).ping != "PONG"
-  abort "Could not PING Rafka server. Is it up?"
+retries = 0
+rafka_up = false
+while retries < 4 && !rafka_up
+  retries += 1
+  rafka_up = Rafka::Producer.new(CLIENT_DEFAULTS).ping == "PONG"
+  sleep 1
 end
+
+abort "Could not PING Rafka server. Is it up?" if !rafka_up
 
 $topics = []
 
