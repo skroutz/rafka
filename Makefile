@@ -10,7 +10,7 @@ build: vet fmt test
 
 test:
 	go test -race
-	test/end-to-end -v
+	cd test && bundle install --frozen && ./end-to-end -v
 
 lint:
 	golint
