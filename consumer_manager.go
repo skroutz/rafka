@@ -87,7 +87,7 @@ func (m *ConsumerManager) GetOrCreate(cid ConsumerID, gid string, topics []strin
 			m.log.Printf("Error configuring consumer: %s", err)
 		}
 
-		c := NewConsumer(string(cid), topics, m.cfg.CommitIntvl, kafkaCfg)
+		c := NewConsumer(string(cid), topics, kafkaCfg)
 		ctx, cancel := context.WithCancel(m.ctx)
 		m.pool[cid] = &consumerPoolEntry{
 			consumer: c,

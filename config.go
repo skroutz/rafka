@@ -15,8 +15,6 @@
 package main
 
 import (
-	"time"
-
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
@@ -29,6 +27,4 @@ type Config struct {
 		Consumer rdkafka.ConfigMap `json:"consumer"`
 		Producer rdkafka.ConfigMap `json:"producer"`
 	}
-
-	CommitIntvl time.Duration
 }
