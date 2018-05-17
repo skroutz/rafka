@@ -1,7 +1,9 @@
-Rafka: Kafka with a Redis API
+Rafka
 ==============================
 
-Rafka is a gateway service that exposes Kafka using the [Redis protocol](https://redis.io/topics/protocol).
+Rafka is a gateway service that exposes Kafka using simple semantics.
+
+It implements the [Redis protocol](https://redis.io/topics/protocol).
 
 
 
@@ -10,8 +12,7 @@ Rafka is a gateway service that exposes Kafka using the [Redis protocol](https:/
 Rationale
 -------------------------------------------------------------------------------
 Using Kafka with languages that lack a reliable, solid client library can be a
-problem for mission-critical applications. At Skroutz we use Ruby and we faced
-this problem constantly.
+problem for mission-critical applications.
 
 Using Rafka we can:
 
