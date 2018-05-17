@@ -60,11 +60,6 @@ func main() {
 			Usage: "Load librdkafka configuration from `FILE`",
 			Value: "kafka.json",
 		},
-		cli.Int64Flag{
-			Name:  "commit-intvl, i",
-			Usage: "Commit offsets of each consumer every `N` seconds",
-			Value: 10,
-		},
 	}
 
 	app.Before = func(c *cli.Context) error {
@@ -84,11 +79,6 @@ func main() {
 		if err != nil {
 			return err
 		}
-
-		if c.Int64("commit-intvl") <= 0 {
-			return errors.New("`commit-intvl` option must be greater than 0")
-		}
-		cfg.CommitIntvl = time.Duration(c.Int64("commit-intvl"))
 
 		// cfg might be set before main() runs (eg. while testing)
 		if cfg.Host == "" {

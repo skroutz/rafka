@@ -20,21 +20,15 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sync"
-	"time"
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 type Consumer struct {
-	id          string
-	consumer    *rdkafka.Consumer
-	topics      []string
-	log         *log.Logger
-	commitIntvl time.Duration
-
-	offsets  map[TopicPartition]rdkafka.Offset
-	offsetIn chan OffsetEntry
+	id       string
+	consumer *rdkafka.Consumer
+	topics   []string
+	log      *log.Logger
 }
 
 type TopicPartition struct {
@@ -47,16 +41,14 @@ type OffsetEntry struct {
 	offset rdkafka.Offset
 }
 
-func NewConsumer(id string, topics []string, commitIntvl time.Duration, cfg rdkafka.ConfigMap) *Consumer {
+func NewConsumer(id string, topics []string, cfg rdkafka.ConfigMap) *Consumer {
 	var err error
 
 	c := Consumer{
-		id:          id,
-		topics:      topics,
-		log:         log.New(os.Stderr, fmt.Sprintf("[consumer-%s] ", id), log.Ldate|log.Ltime),
-		commitIntvl: commitIntvl,
-		offsets:     make(map[TopicPartition]rdkafka.Offset),
-		offsetIn:    make(chan OffsetEntry, 10000)}
+		id:     id,
+		topics: topics,
+		log:    log.New(os.Stderr, fmt.Sprintf("[consumer-%s] ", id), log.Ldate|log.Ltime),
+	}
 
 	c.consumer, err = rdkafka.NewConsumer(&cfg)
 	if err != nil {
@@ -69,32 +61,11 @@ func NewConsumer(id string, topics []string, commitIntvl time.Duration, cfg rdka
 }
 
 func (c *Consumer) Run(ctx context.Context) {
-	var wg sync.WaitGroup
-
 	c.consumer.SubscribeTopics(c.topics, nil)
 
-	// offset commit goroutine
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-		t := time.NewTicker(c.commitIntvl * time.Second)
-		defer t.Stop()
-	Loop:
-		for {
-			select {
-			case <-ctx.Done():
-				c.commitOffsets()
-				break Loop
-			case oe := <-c.offsetIn:
-				c.offsets[oe.tp] = oe.offset
-			case <-t.C:
-				c.commitOffsets()
-			}
-		}
-	}(ctx)
-
 	c.log.Printf("Started working...")
-	wg.Wait()
+	<-ctx.Done()
+
 	err := c.consumer.Close()
 	if err != nil {
 		c.log.Printf("Error closing: %s", err)
@@ -120,29 +91,17 @@ func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
 }
 
 // SetOffset sets the offset for the given topic and partition to pos.
-// It does not actually commit the offset to Kafka (this is done periodically
-// in the background).
+// Commiting the offset to Kafka is handled by librdkafka in the background.
 func (c *Consumer) SetOffset(topic string, partition int32, pos rdkafka.Offset) error {
 	if pos < 0 {
 		return fmt.Errorf("offset cannot be negative, got %d", pos)
 	}
-	c.offsetIn <- OffsetEntry{TopicPartition{topic, partition}, pos}
-	return nil
-}
-
-// commitOffsets commits the offsets stored in c to Kafka.
-func (c *Consumer) commitOffsets() {
-	for tp, off := range c.offsets {
-		rdkafkaTp := []rdkafka.TopicPartition{{
-			Topic:     &tp.Topic,
-			Partition: tp.Partition,
-			Offset:    off}}
-
-		_, err := c.consumer.CommitOffsets(rdkafkaTp)
-		if err != nil {
-			c.log.Printf("Error committing offset %d for %s: %s", off, rdkafkaTp, err)
-			continue
-		}
-		delete(c.offsets, tp)
-	}
+	_, err := c.consumer.StoreOffsets([]rdkafka.TopicPartition{
+		{
+			Topic:     &topic,
+			Partition: partition,
+			Offset:    pos,
+		},
+	})
+	return err
 }

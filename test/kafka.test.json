@@ -9,7 +9,9 @@
  "consumer": {
    "go.events.channel.enable": false,
    "go.application.rebalance.enable": false,
-   "enable.auto.commit": false,
+   "enable.auto.commit": true,
+   "auto.commit.interval.ms": 1000,
+   "enable.auto.offset.store": false,
    "auto.offset.reset": "earliest",
    "enable.partition.eof": false
  },
