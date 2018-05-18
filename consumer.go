@@ -25,10 +25,11 @@ import (
 )
 
 type Consumer struct {
-	id       string
-	consumer *rdkafka.Consumer
-	topics   []string
-	log      *log.Logger
+	id              string
+	consumer        *rdkafka.Consumer
+	topics          []string
+	log             *log.Logger
+	autoOffsetStore bool
 }
 
 type TopicPartition struct {
@@ -57,6 +58,13 @@ func NewConsumer(id string, topics []string, cfg rdkafka.ConfigMap) *Consumer {
 		c.log.Fatal(err)
 	}
 
+	// read the config after initializing the consumer which will validate the config
+	v, err := cfg.Get("enable.auto.offset.store", true)
+	if err != nil {
+		panic(err)
+	} else {
+		c.autoOffsetStore = v.(bool)
+	}
 	return &c
 }
 
@@ -90,9 +98,12 @@ func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
 	}
 }
 
-// SetOffset sets the offset for the given topic and partition to pos.
-// Commiting the offset to Kafka is handled by librdkafka in the background.
+// SetOffset sets the offset for the given topic and partition to pos, which will be
+// used by the next commit
 func (c *Consumer) SetOffset(topic string, partition int32, pos rdkafka.Offset) error {
+	if c.autoOffsetStore {
+		return errors.New("cannot set offsets, 'enable.auto.offset.store' is set")
+	}
 	if pos < 0 {
 		return fmt.Errorf("offset cannot be negative, got %d", pos)
 	}
