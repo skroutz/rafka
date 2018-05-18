@@ -1,3 +1,39 @@
+rafka (0.0.11-1) stretch; urgency=medium
+
+  [ Agis Anastasopoulos ]
+  * consumer: Handle unknown event types gracefully
+  * Test latest rafka-rb driver
+
+  [ Christos Trochalakis ]
+  * Switch to Go 1.9
+  * debian: Switch to golang 1.9
+
+  [ Agis Anastasopoulos ]
+  * make: Remove list target
+
+  [ Christos Trochalakis ]
+  * Drop make list reference from README
+
+  [ Agis Anastasopoulos ]
+  * README: Rafka is ready for production
+  * README: Add Drivers section
+  * README: minor fix
+  * README: Add link to relevant blog post
+  * Add test for manual offset management in rafka-rb
+  * test: Bump rafka-rb version
+  * test: Simplify manual commit end-to-end test
+  * test: Disable consume retries in e2e tests
+  * Add end-to-end test for batch consuming
+  * Test with rafka-rb 0.2.3
+  * Pin confluent-kafka-go to ^0.11.4
+  * Test with rafka-rb 0.2.5
+  * test: Use librdkafka-dev 0.11.4
+  * Update README.md
+  * Bootstrap changelog
+  * Prepare for 0.0.11 release
+
+ -- Agis Anastasopoulos <agis.anast@gmail.com>  Fri, 18 May 2018 11:33:40 +0300
+
 rafka (0.0.9-1) stretch; urgency=medium
 
   [ Agis Anastasopoulos ]
