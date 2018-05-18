@@ -1,7 +1,9 @@
-Rafka: Kafka with a Redis API
+Rafka
 ==============================
 
-Rafka is a gateway service that exposes Kafka using the [Redis protocol](https://redis.io/topics/protocol).
+Rafka is a gateway service that exposes Kafka using simple semantics.
+
+It implements the [Redis protocol](https://redis.io/topics/protocol).
 
 
 
@@ -10,8 +12,7 @@ Rafka is a gateway service that exposes Kafka using the [Redis protocol](https:/
 Rationale
 -------------------------------------------------------------------------------
 Using Kafka with languages that lack a reliable, solid client library can be a
-problem for mission-critical applications. At Skroutz we use Ruby and we faced
-this problem constantly.
+problem for mission-critical applications.
 
 Using Rafka we can:
 
@@ -21,15 +22,13 @@ Using Rafka we can:
   in languages that lack a proper Kafka driver or do not provide
   concurrency primitives to implement buffering and other optimizations. Furthermore,
   writing a Rafka client is much easier than writing a Kafka client. For a
-  Ruby driver see [rafka-rb](https://github.com/skroutz/rafka-rb).
+  list of available drivers see [_Drivers_](#drivers).
+
+Refer to [*"Introducing Kafka to a Rails application"*](https://engineering.skroutz.gr/blog/kafka-rails-integration/)
+for more information.
 
 
 
-
-Status
--------------------------------------------------------------------------------
-This project is under heavy development and is _not_ recommended for
-use in production environments until we reach the [1.x series](https://github.com/skroutz/rafka/milestone/1).
 
 
 
@@ -180,6 +179,10 @@ Example using Redis:
 
 
 
+Drivers
+-------------------------------------------------------------------------------
+
+- Ruby: [rafka-rb](https://github.com/skroutz/rafka-rb)
 
 
 
@@ -210,11 +213,6 @@ Run tests (must have done `make spawn` before), perform various static checks
 and finally build the project:
 ```shell
 $ make
-```
-
-List all available commands:
-```shell
-$ make list
 ```
 
 

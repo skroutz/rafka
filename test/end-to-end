@@ -13,7 +13,7 @@ host, port = host_port[0], Integer(host_port[1])
 
 CLIENT_DEFAULTS = { host: host, port: port, redis: { reconnect_attempts: 5 } }
 FLUSH_TIMEOUT = 5000
-CONSUME_RETRIES = 3
+CONSUME_RETRIES = 1
 CONSUME_TIMEOUT = 1
 
 class TestRafka < Minitest::Test
@@ -262,6 +262,161 @@ class TestRafka < Minitest::Test
 
     @prod.redis.del("stats")
     assert @prod.redis.hgetall("stats")["producer.delivery.errors"], "0"
+  end
+
+  def test_consumer_manual_commit
+    n = 50
+    abort "n (#{n}) must be an even number" if n.odd?
+    gid = rand_id
+
+    with_new_topic(consumer: true, partitions: 2) do |topic|
+      cons = Rafka::Consumer.new(CLIENT_DEFAULTS.merge(
+        topic: topic, group: gid, id: "a", auto_commit: false))
+      start_consumer!(cons)
+
+      n.times { |i| @prod.produce(topic, i) }
+      assert_flushed @prod
+
+      msg = nil
+
+      # do a plain consume of all messages, without committing offsets
+      n.times do
+        msg = consume_with_retry(cons)
+        assert_rafka_msg(msg)
+        assert Integer(msg.value) < n
+      end
+
+      # restart consumer; we should start without any initial offsets since
+      # we didn't commit
+      cons.close
+      msg = consume_with_retry(cons)
+      assert_equal 0, msg.offset
+
+      # restart and consume again; this time commit offsets
+      cons.close
+      msgs = []
+      n.times do
+        msg = consume_with_retry(cons)
+        assert_rafka_msg(msg)
+        msgs << msg
+      end
+      res = cons.commit(*msgs)
+
+      # close causes rafka to issue a commit offsets request
+      cons.close
+
+      # restart and consume some newly-produced messages; we expect to
+      # start with the previous offsets since we did commit. There's still
+      # a small window until the offsets are actually committed to Kafka and
+      # if we hit it, we expect the following assertions to fail.
+      n.times { |i| @prod.produce(topic, n+i) }
+      assert_flushed @prod
+
+      n.times do
+        msg = consume_with_retry(cons)
+        assert_rafka_msg(msg)
+        assert Integer(msg.value) >= n
+      end
+
+      cons.close
+    end
+  end
+
+  def test_consumer_batch
+    with_new_topic(consumer: true) do |topic, cons|
+      50.times { |i| @prod.produce(topic, i) }
+      assert_flushed @prod
+
+      msgs = cons.consume_batch(timeout: 0.3, batch_size: 30, batching_max_sec: 5)
+      assert_equal 30, msgs.size
+
+      msgs = cons.consume_batch(timeout: 0.3, batch_size: 9999, batching_max_sec: 2)
+      assert_equal 20, msgs.size
+
+      50.times { |i| @prod.produce(topic, i) }
+      assert_flushed @prod
+
+      msgs = cons.consume_batch(timeout: 0.3, batch_size: 30, batching_max_sec: 0)
+      assert_equal 30, msgs.size
+
+      msgs = cons.consume_batch(timeout: 0.3, batch_size: 0, batching_max_sec: 2)
+      assert_equal 20, msgs.size
+    end
+  end
+
+  def test_consumer_batch_commit
+    with_new_topic(consumer: true, partitions: 1) do |topic, cons|
+      50.times { |i| @prod.produce(topic, i) }
+      assert_flushed @prod
+
+      msgs = cons.consume_batch(timeout: 0.3, batch_size: 10)
+      msgs.map! { |m| Integer(m.value) }.sort!
+      assert_equal 9, msgs.last
+
+      # close and re-consume; we should start from the previous point
+      cons.close
+      msgs = cons.consume_batch(timeout: 0.3, batch_size: 5)
+      msgs.map! { |m| Integer(m.value) }.sort!
+      assert_equal 14, msgs.last
+
+
+      assert_raises RuntimeError do
+        # close and re-consume with a block; we should start from the previous
+        # point
+        cons.close
+        cons.consume_batch(timeout: 0.3, batch_size: 5) do |msgs|
+          results = msgs.map { |m| Integer(m.value) }.sort
+          assert_equal 19, results.last
+
+          # raise an error to avoid committing the offsets
+          raise "foo"
+        end
+      end
+
+      # close and re-consume; we should get again the same messages since
+      # the previous consume didn't commit offsets
+      cons.close
+      msgs = cons.consume_batch(timeout: 0.3, batch_size: 5)
+      msgs.map! { |m| Integer(m.value) }.sort!
+      assert_equal 19, msgs.last
+    end
+  end
+
+  def test_consume_with_block
+    with_new_topic(consumer: true, partitions: 1) do |topic, cons|
+      10.times { |i| @prod.produce(topic, i) }
+      assert_flushed @prod
+
+      msg = nil
+
+      assert_rafka_msg(cons.consume)
+      cons.consume do |msg|
+        assert_equal 1, Integer(msg.value)
+      end
+
+      # close and restart; we should continue from where we left
+      cons.close
+      cons.consume do |msg|
+        assert_equal 2, Integer(msg.value)
+      end
+
+      # consume with a block that raises an error; offsets shouldn't be
+      # committed
+      cons.close
+      assert_raises RuntimeError do
+        cons.consume do |msg|
+          assert_equal 3, Integer(msg.value)
+
+          # raise an error to avoid committing the offsets
+          raise "foo"
+        end
+      end
+
+      # close and re-consume; we should start again from the already consumed
+      # messages b/c offsets weren't committed
+      cons.close
+      assert_equal 3, Integer(cons.consume.value)
+    end
   end
 end
 

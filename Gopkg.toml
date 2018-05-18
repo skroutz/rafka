@@ -1,6 +1,6 @@
 [[constraint]]
   name = "github.com/confluentinc/confluent-kafka-go"
-  revision = "9fa7efcf0471e6d18d6ba2756abaa18de84a0415"
+  version = "^0.11.4"
 
 [[constraint]]
   name = "github.com/urfave/cli"
