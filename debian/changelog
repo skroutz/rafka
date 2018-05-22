@@ -1,3 +1,9 @@
+rafka (0.0.12-1) stretch; urgency=medium
+
+  * Use librdkafka auto commit and store offsets functionality
+
+ -- Dimitris Theodorou <dimitris.theodorou@gmail.com>  Tue, 22 May 2018 13:43:50 +0300
+
 rafka (0.0.9-1) stretch; urgency=medium
 
   [ Agis Anastasopoulos ]
