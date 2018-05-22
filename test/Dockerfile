@@ -29,4 +29,4 @@ WORKDIR "/rafka"
 ENTRYPOINT ["test/docker-entrypoint.sh"]
 EXPOSE 6380
 
-CMD ["-k", "test/kafka.test.json", "-i", "1"]
+CMD ["-k", "test/kafka.test.json"]

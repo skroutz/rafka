@@ -114,7 +114,7 @@ Usage
 
 ```shell
 $ vim kafka.json.sample # Add brokers
-$ go build && ./rafka -k ./kafka.json.sample -i 10
+$ go build && ./rafka -k ./kafka.json.sample
 ```
 
 
