@@ -82,12 +82,15 @@ func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
 	switch e := ev.(type) {
 	case *rdkafka.Message:
 		return e, nil
+	case rdkafka.OffsetsCommitted:
+		c.log.Print(e)
 	case rdkafka.Error:
 		return nil, errors.New(e.String())
 	default:
 		c.log.Printf("Unknown event type: %T", e)
-		return nil, nil
 	}
+
+	return nil, nil
 }
 
 // SetOffset sets the offset for the given topic and partition to pos.
