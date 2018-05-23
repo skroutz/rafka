@@ -337,7 +337,7 @@ Loop:
 		}
 	}
 
-	s.log.Println("Terminating in-flight connections...")
+	s.log.Println("Waiting for in-flight connections...")
 	s.inFlight.Wait()
 	s.log.Println("Bye")
 	return nil

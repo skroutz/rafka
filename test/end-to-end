@@ -13,8 +13,8 @@ host, port = host_port[0], Integer(host_port[1])
 
 CLIENT_DEFAULTS = { host: host, port: port, redis: { reconnect_attempts: 5 } }
 FLUSH_TIMEOUT = 5000
-CONSUME_RETRIES = 1
-CONSUME_TIMEOUT = 1
+CONSUME_RETRIES = 3
+CONSUME_TIMEOUT = 5
 
 class TestRafka < Minitest::Test
   def setup
@@ -72,10 +72,10 @@ class TestRafka < Minitest::Test
       replies = []
       tries = 0
 
-      while replies.size < 2 && tries < 6
+      while replies.size < 2 && tries < 10
         tries += 1
 
-        msg = consume_with_retry(cons1) || consume_with_retry(cons2)
+        msg = cons1.consume(1) || cons2.consume(1)
         next if !msg
 
         replies << msg.value
@@ -193,7 +193,7 @@ class TestRafka < Minitest::Test
 
       while output.size < input_a.size
         cgroup.each do |c|
-          msg = consume_with_retry(c, timeout: 1, retries: 1)
+          msg = c.consume(1)
           output[msg.value.to_i] += 1 if msg
         end
       end
@@ -202,6 +202,8 @@ class TestRafka < Minitest::Test
 
       # restart cgroup to simulate client app deployment
       cgroup.each { |c| c.close }
+
+      sleep 2 # sleep more than the auto.commit interval so that a commit will kick in
 
       # produce some more input and assert cgroup continues where it left
       # position (ie. does not re-consume input_a)
@@ -212,7 +214,7 @@ class TestRafka < Minitest::Test
 
       while output.size < input_size
         cgroup.each do |c|
-          msg = consume_with_retry(c, timeout: 1, retries: 1)
+          msg = c.consume(1)
           output[msg.value.to_i] += 1 if msg
         end
       end
