@@ -5,7 +5,7 @@ Rafka
 
 Rafka is a gateway service that exposes Kafka using simple semantics.
 
-It implements the [Redis protocol](https://redis.io/topics/protocol).
+It implements a small subset of the [Redis protocol](https://redis.io/topics/protocol), so that it can be used by leveraging existing Redis drivers.
 
 
 
