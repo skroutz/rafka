@@ -5,7 +5,7 @@ Rafka
 
 Rafka is a gateway service that exposes Kafka using simple semantics.
 
-It implements a small subset of the [Redis protocol](https://redis.io/topics/protocol), so that it can be used by leveraging existing Redis drivers.
+It implements a small subset of the [Redis protocol](https://redis.io/topics/protocol), so that it can be used by leveraging existing Redis client libraries.
 
 
 
@@ -21,10 +21,10 @@ Using Rafka we can:
 - Hide Kafka low-level details from the application and provide sane defaults,
   backed by the excellent [librdkafka](https://github.com/edenhill/librdkafka).
 - Use a Redis client instead of a Kafka client. This particularly useful
-  in languages that lack a proper Kafka driver or do not provide
+  in languages that lack a proper Kafka client library or do not provide
   concurrency primitives to implement buffering and other optimizations. Furthermore,
   writing a Rafka client is much easier than writing a Kafka client. For a
-  list of available drivers see [_Drivers_](#drivers).
+  list of available client libraries see [_Client libraries_](#client-libraries).
 
 Refer to [*"Introducing Kafka to a Rails application"*](https://engineering.skroutz.gr/blog/kafka-rails-integration/)
 for more information.
@@ -181,7 +181,7 @@ Example using Redis:
 
 
 
-Drivers
+Client libraries
 -------------------------------------------------------------------------------
 
 - Ruby: [rafka-rb](https://github.com/skroutz/rafka-rb)
