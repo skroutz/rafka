@@ -1,3 +1,10 @@
+rafka (0.0.12-2) stretch; urgency=medium
+
+  [ Agis Anastasopoulos ]
+  * Add TimeoutStopSec to circumvent #59
+
+ -- Agis Anastasopoulos <agis.anast@gmail.com>  Tue, 04 Jun 2018 10:54:32 +0200
+
 rafka (0.0.12-1) stretch; urgency=medium
 
   * Use librdkafka auto commit and store offsets functionality
