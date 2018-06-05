@@ -1,3 +1,10 @@
+rafka (0.0.15-2) stretch; urgency=medium
+
+  [ Agis Anastasopoulos ]
+  * Bump TimeoutStopSec to 10sec.
+
+ -- Agis Anastasopoulos <agis.anast@gmail.com>  Tue, 05 Jun 2018 14:39:56 +0300  Tue, 05 Jun 2018 14:45:29 +0300
+
 rafka (0.0.15-1) stretch; urgency=medium
 
   [ Agis Anastasopoulos ]
