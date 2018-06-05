@@ -75,7 +75,7 @@ func (c *Client) String() string {
 	return c.id
 }
 
-func (c *Client) Consumer(topics []string) (*Consumer, error) {
+func (c *Client) Consumer(topics []string, cfg rdkafka.ConfigMap) (*Consumer, error) {
 	if !c.consReady {
 		return nil, errors.New("Connection not ready. Identify yourself using `CLIENT SETNAME` first")
 	}
@@ -98,7 +98,7 @@ func (c *Client) Consumer(topics []string) (*Consumer, error) {
 		c.consByTopic[topic] = cid
 	}
 
-	return c.consManager.GetOrCreate(cid, c.consGID, topics), nil
+	return c.consManager.GetOrCreate(cid, c.consGID, topics, cfg)
 }
 
 func (c *Client) ConsumerByTopic(topic string) (*Consumer, error) {
