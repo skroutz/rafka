@@ -7,6 +7,18 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 
 
+## 0.0.14 (2018-06-05)
+
+### Fixed
+
+- Consumer could hang indefinitely when closing [[#59](https://github.com/skroutz/rafka/issues/59)]
+
+
+
+
+
+
+
 
 
 
