@@ -5,6 +5,13 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 ## master (unreleased)
 
+
+
+
+
+
+## 0.0.16 (2018-06-07)
+
 ### Fixed
 
 - Consumers failed to start if librdkafka configuration provided from
