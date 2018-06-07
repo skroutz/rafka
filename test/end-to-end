@@ -442,6 +442,16 @@ class TestRafka < Minitest::Test
     valid_configs.each do |cfg|
       start_consumer!(new_consumer(topic: "foo", librdkafka: cfg))
     end
+
+    with_new_topic do |topic|
+      produce_and_flush!(@prod, topic, "foo")
+
+      cons = new_consumer(topic: topic, librdkafka: { "auto.offset.reset" => "latest" })
+      assert_nil cons.consume(5)
+
+      produce_and_flush!(@prod, topic, "bar")
+      assert_rafka_msg_equal "bar", cons.consume(5)
+    end
   end
 end
 
