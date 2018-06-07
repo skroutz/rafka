@@ -1,5 +1,5 @@
 source 'https://rubygems.org'
 
 gem "redis", "3.0.3"
-gem "rafka", git: "https://github.com/skroutz/rafka-rb"
+gem "rafka", "0.3.0"
 gem "minitest"
