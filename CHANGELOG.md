@@ -6,6 +6,25 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 ## master (unreleased)
 
 
+
+
+
+
+## 0.0.16 (2018-06-07)
+
+### Fixed
+
+- Consumers failed to start if librdkafka configuration provided from
+  clients contained numeric values [[118c36a](https://github.com/skroutz/rafka/commit/118c36af1969b1df81ce0d29f1a36696f94e8a2a)]
+
+
+
+
+
+
+
+
+
 ## 0.0.15 (2018-06-05)
 
 This is a maintenance release with no changes.
