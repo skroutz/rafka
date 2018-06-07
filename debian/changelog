@@ -1,3 +1,10 @@
+rafka (0.0.16-1) stretch; urgency=medium
+
+  * Use integers when decoding JSON configuration
+  * Print consumer configuration on spawn
+
+ -- Agis Anastasopoulos <agis.anast@gmail.com>  Thu, 07 Jun 2018 17:55:51 +0300
+
 rafka (0.0.15-2) stretch; urgency=medium
 
   [ Agis Anastasopoulos ]
