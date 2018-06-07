@@ -2,8 +2,10 @@ def rand_id
   SecureRandom.hex(3)
 end
 
-def new_consumer(topic, group=rand_id, id=rand_id)
-  Rafka::Consumer.new(CLIENT_DEFAULTS.merge(topic: topic, group: group, id: id))
+def new_consumer(topic:, group: rand_id, id: rand_id, librdkafka: {})
+  Rafka::Consumer.new(
+    CLIENT_DEFAULTS.merge(topic: topic, group: group, id: id, librdkafka: librdkafka)
+  )
 end
 
 # @return [nil, Rafka::Message]
@@ -31,7 +33,13 @@ def with_new_topic(topic: "r-#{rand_id}", partitions: 4, replication_factor: 2,
   create_kafka_topic!(topic, partitions, replication_factor)
   $topics << topic
 
-  consumer = consumer ? new_consumer(topic) : nil
+  consumer = if consumer == true
+    new_consumer(topic: topic)
+  elsif consumer.is_a?(Hash)
+    new_consumer(topic: topic, librdkafka: consumer)
+  else
+    nil
+  end
 
   yield topic, consumer
 end

@@ -358,9 +358,11 @@ func parseTopicsAndConfig(s string) ([]string, rdkafka.ConfigMap, error) {
 
 	var rdconfig rdkafka.ConfigMap
 	if len(parts) == 3 && parts[2] != "" {
-		err := json.Unmarshal([]byte(parts[2]), &rdconfig)
+		dec := json.NewDecoder(strings.NewReader(parts[2]))
+		dec.UseNumber()
+		err := dec.Decode(&rdconfig)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Cannot parse JSON config from %s, error: %s", parts[2], err)
+			return nil, nil, fmt.Errorf("Error parsing configuration from '%s'; %s", parts[2], err)
 		}
 	}
 

@@ -28,6 +28,7 @@ type Consumer struct {
 	id       string
 	consumer *rdkafka.Consumer
 	topics   []string
+	cfg      rdkafka.ConfigMap
 	log      *log.Logger
 }
 
@@ -47,6 +48,7 @@ func NewConsumer(id string, topics []string, cfg rdkafka.ConfigMap) (*Consumer, 
 	c := Consumer{
 		id:     id,
 		topics: topics,
+		cfg:    cfg,
 		log:    log.New(os.Stderr, fmt.Sprintf("[consumer-%s] ", id), log.Ldate|log.Ltime),
 	}
 
@@ -61,7 +63,7 @@ func NewConsumer(id string, topics []string, cfg rdkafka.ConfigMap) (*Consumer, 
 func (c *Consumer) Run(ctx context.Context) {
 	c.consumer.SubscribeTopics(c.topics, nil)
 
-	c.log.Printf("Started working...")
+	c.log.Printf("Started working (%v)...", c.cfg)
 	<-ctx.Done()
 
 	// need to drain the consumer queue by calling Poll() until nil is returned

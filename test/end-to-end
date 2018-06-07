@@ -147,15 +147,16 @@ class TestRafka < Minitest::Test
     with_new_topic(partitions: 1) do |topic|
       produce_and_flush!(@prod, topic, "foo")
       group_a = "a_group"
-      cons = new_consumer(topic, group_a)
+      cons = new_consumer(topic: topic, group: group_a)
       assert_rafka_msg_equal "foo", consume_with_retry(cons)
       cons.close
 
       produce_and_flush!(@prod, topic, "bar")
 
-      assert_rafka_msg_equal "bar", consume_with_retry(new_consumer(topic, group_a))
+      assert_rafka_msg_equal "bar", consume_with_retry(
+        new_consumer(topic: topic, group: group_a))
 
-      cons = new_consumer(topic, "another_group")
+      cons = new_consumer(topic: topic, group: "another_group")
       assert_rafka_msg_equal "foo", consume_with_retry(cons)
       assert_rafka_msg_equal "bar", consume_with_retry(cons)
     end
@@ -186,7 +187,7 @@ class TestRafka < Minitest::Test
       output = Hash.new(0)
 
       # produce some input and consume it
-      cgroup = Array.new(2) { new_consumer(topic, group) }
+      cgroup = Array.new(2) { new_consumer(topic: topic, group: group) }
       cgroup.each { |c| start_consumer!(c) }
       input_a.each { |i| @prod.produce(topic, i) }
       assert_flushed @prod
@@ -207,7 +208,7 @@ class TestRafka < Minitest::Test
 
       # produce some more input and assert cgroup continues where it left
       # position (ie. does not re-consume input_a)
-      cgroup = Array.new(2) { new_consumer(topic, group) }
+      cgroup = Array.new(2) { new_consumer(topic: topic, group: group) }
       cgroup.each { |c| start_consumer!(c) }
       input_b.each { |i| @prod.produce(topic, i) }
       assert_flushed @prod
@@ -230,20 +231,20 @@ class TestRafka < Minitest::Test
 
   def test_consumer_id_reclaim
     group, id = rand_id, rand_id
-    cons = new_consumer("a-topic", group, id)
+    cons = new_consumer(topic: "a-topic", group: group, id: id)
     cons.consume(1)
     cons.close
 
-    cons = new_consumer("a-topic", group, id)
+    cons = new_consumer(topic: "a-topic", group: group, id: id)
     cons.consume(1)
   end
 
   def test_consumer_id_uniqueness
     group, id = rand_id, rand_id
-    cons1 = new_consumer("a-topic", group, id)
+    cons1 = new_consumer(topic: "a-topic", group: group, id: id)
     cons1.consume(1)
 
-    cons2 = new_consumer("a-topic", group, id)
+    cons2 = new_consumer(topic: "a-topic", group: group, id: id)
     assert_raises Rafka::ConsumeError do
       cons2.consume(1)
     end
@@ -418,6 +419,28 @@ class TestRafka < Minitest::Test
       # messages b/c offsets weren't committed
       cons.close
       assert_equal 3, Integer(cons.consume.value)
+    end
+  end
+
+  def test_consumer_librdkafka_config
+    invalid_configs = [
+      { "foo": "bar" },
+      { "session.timeout.ms": true },
+    ]
+
+    invalid_configs.each do |cfg|
+      assert_raises Rafka::ConsumeError do
+        start_consumer!(new_consumer(topic: "foo", librdkafka: cfg))
+      end
+    end
+
+    valid_configs = [
+      {},
+      {"session.timeout.ms": 12345, "log.connection.close": false},
+    ]
+
+    valid_configs.each do |cfg|
+      start_consumer!(new_consumer(topic: "foo", librdkafka: cfg))
     end
   end
 end
