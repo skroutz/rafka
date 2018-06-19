@@ -9,9 +9,7 @@ services:
     volumes:
       - ../:/rafka
     ports:
-      - 6380:6380
-    # temp. workaround for https://github.com/skroutz/rafka/issues/11
-    restart: on-failure
+      - 6381:6380
 
 networks:
   default:
