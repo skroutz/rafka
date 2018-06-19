@@ -1,10 +1,10 @@
 .PHONY: install build test lint fmt clean
 
 install: fmt test
-	go install
+	go install -v
 
 build: fmt test
-	go build
+	go build -v
 
 test:
 	go test -race
