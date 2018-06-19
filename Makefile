@@ -23,7 +23,3 @@ fmt:
 
 clean:
 	go clean
-
-CWD=$(shell pwd)
-spawn:
-	docker run -p 6380:6380 -v $(CWD):/rafka --rm --name rafka_server_1 --network kafkaclustertestbed_default skroutz/rafka
