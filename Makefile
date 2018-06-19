@@ -1,11 +1,9 @@
-.PHONY: install build test lint vet fmt clean list
+.PHONY: install build test lint fmt clean
 
-all: vet fmt test install test
-
-install: vet fmt test
+install: fmt test
 	go install
 
-build: vet fmt test
+build: fmt test
 	go build
 
 test:
@@ -14,9 +12,6 @@ test:
 
 lint:
 	golint
-
-vet:
-	go vet
 
 fmt:
 	! gofmt -d -e -s *.go 2>&1 | tee /dev/tty | read
