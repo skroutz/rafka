@@ -172,8 +172,9 @@ Example using Redis:
 
 - [`PING`](https://redis.io/commands/ping)
 - [`QUIT`](https://redis.io/commands/quit)
-- `HGETALL stats`: returns a hash with various statistics. Typically used for
+- `HGETALL stats`: returns a hash with various statistics useful for
   monitoring.
+- `DEL stats`: resets the monitoring statistics.
 
 
 
