@@ -10,6 +10,9 @@ test:
 	go test -race
 	cd test && bundle install --frozen && ./end-to-end -v
 
+teste2e:
+	cd test && bundle install --frozen && ./end-to-end -v
+
 lint:
 	golint
 

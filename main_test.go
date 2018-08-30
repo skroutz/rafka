@@ -18,7 +18,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	cmd := spawn.New(main, "-p", "6382", "-c", "test/librdkafka.test.json")
+	cmd := spawn.New(main, "-p", "6383", "-c", "test/librdkafka.test.json")
 
 	// start rafka
 	ctx, cancel := context.WithCancel(context.Background())
@@ -268,7 +268,7 @@ func TestParseConfig(t *testing.T) {
 func newClient(id string) *redis.Client {
 	return redis.NewClient(&redis.Options{
 		// TODO Add the ability to read host and port from a cfg file
-		Addr:      fmt.Sprintf("%s:%d", "localhost", 6382),
+		Addr:      fmt.Sprintf("%s:%d", "localhost", 6383),
 		OnConnect: setName(id)})
 }
 

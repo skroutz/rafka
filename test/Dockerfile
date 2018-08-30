@@ -13,20 +13,11 @@ RUN curl -sSL http://debian.skroutz.gr/skroutz.asc | apt-key add -
 # TODO: install librdkafka-dev from main dist when it's backported
 RUN apt-get update && \
     apt-get install -y librdkafka-dev -t stretch-skroutz-proposed-updates && \
-    apt-get install -y --no-install-recommends \
-                    golang \
-                    golang-github-confluentinc-confluent-kafka-go-dev \
-                    golang-github-secmask-go-redisproto-dev \
-                    golang-github-urfave-cli-dev \
-                    golang-golang-x-sync-dev
-
-ENV GOPATH /usr/share/gocode
-ENV GOTRACEBACK crash
+    apt-get install -y --no-install-recommends golang
 
 VOLUME ["/rafka"]
 WORKDIR "/rafka"
-
-ENTRYPOINT ["test/docker-entrypoint.sh"]
 EXPOSE 6380
 
+ENTRYPOINT ["./rafka"]
 CMD ["-c", "test/librdkafka.test.json"]
