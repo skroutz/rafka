@@ -38,24 +38,24 @@ import (
 type Server struct {
 	log      *log.Logger
 	manager  *ConsumerManager
-	ctx      context.Context // TODO(agis): make this a function param
-	inFlight sync.WaitGroup  // TODO(agis): make this a local var
-	timeout  time.Duration
+	inFlight sync.WaitGroup // TODO(agis): make this a local var
+
+	// default timeout for consumer poll
+	timeout time.Duration
 
 	// clientByID contains the currently connected clients to the server.
 	clientByID sync.Map // map[string]*Client
 }
 
-func NewServer(ctx context.Context, manager *ConsumerManager, timeout time.Duration) *Server {
+func NewServer(manager *ConsumerManager, timeout time.Duration) *Server {
 	return &Server{
-		ctx:     ctx,
 		manager: manager,
 		timeout: timeout,
 		log:     log.New(os.Stderr, "[server] ", log.Ldate|log.Ltime),
 	}
 }
 
-func (s *Server) handleConn(conn net.Conn) {
+func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	c := NewClient(conn, s.manager)
 	defer c.Close()
 
@@ -110,7 +110,7 @@ func (s *Server) handleConn(conn net.Conn) {
 			ConsLoop:
 				for {
 					select {
-					case <-s.ctx.Done():
+					case <-ctx.Done():
 						writeErr = writer.WriteError("CONS Server shutdown")
 						break ConsLoop
 					case <-ticker.C:
@@ -286,7 +286,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 }
 
-func (s *Server) ListenAndServe(hostport string) error {
+func (s *Server) ListenAndServe(ctx context.Context, hostport string) error {
 	listener, err := net.Listen("tcp", hostport)
 	if err != nil {
 		return err
@@ -294,7 +294,7 @@ func (s *Server) ListenAndServe(hostport string) error {
 	s.log.Print("Listening on " + hostport)
 
 	go func() {
-		<-s.ctx.Done() // unblock Accept()
+		<-ctx.Done() // unblock Accept()
 		listener.Close()
 
 		closeFunc := func(id, client interface{}) bool {
@@ -317,7 +317,7 @@ func (s *Server) ListenAndServe(hostport string) error {
 Loop:
 	for {
 		select {
-		case <-s.ctx.Done():
+		case <-ctx.Done():
 			break Loop
 		default:
 			conn, err := listener.Accept()
@@ -331,7 +331,7 @@ Loop:
 				s.inFlight.Add(1)
 				go func() {
 					defer s.inFlight.Done()
-					s.handleConn(conn)
+					s.handleConn(ctx, conn)
 				}()
 			}
 		}

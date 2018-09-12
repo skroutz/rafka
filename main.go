@@ -185,12 +185,12 @@ func run(c *cli.Context) {
 
 	var serverWg sync.WaitGroup
 	serverCtx, serverCancel := context.WithCancel(ctx)
-	rafka := NewServer(serverCtx, manager, 5*time.Second)
+	rafka := NewServer(manager, 5*time.Second)
 
 	serverWg.Add(1)
 	go func() {
 		defer serverWg.Done()
-		err := rafka.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
+		err := rafka.ListenAndServe(serverCtx, fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
 		if err != nil {
 			log.Fatal(err)
 		}
