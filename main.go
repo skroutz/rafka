@@ -165,17 +165,19 @@ func main() {
 }
 
 func run(c *cli.Context) {
-	l := log.New(os.Stderr, "[rafka] ", log.Ldate|log.Ltime)
+	var serverWg, managerWg sync.WaitGroup
+	logger := log.New(os.Stderr, "[rafka] ", log.Ldate|log.Ltime)
+	ctx := context.Background()
+	serverCtx, serverCancel := context.WithCancel(ctx)
+	managerCtx, managerCancel := context.WithCancel(ctx)
+
+	manager := NewConsumerManager(managerCtx, cfg)
+	server := NewServer(manager, 5*time.Second)
 
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
-	ctx := context.Background()
-
 	_, rdkafkaVer := rdkafka.LibraryVersion()
-	l.Printf("Spawning Consumer Manager (librdkafka %s) | config: %v...", rdkafkaVer, cfg)
-	var managerWg sync.WaitGroup
-	managerCtx, managerCancel := context.WithCancel(ctx)
-	manager := NewConsumerManager(managerCtx, cfg)
+	logger.Printf("Spawning Consumer Manager (librdkafka %s) | config: %v...", rdkafkaVer, cfg)
 
 	managerWg.Add(1)
 	go func() {
@@ -183,14 +185,10 @@ func run(c *cli.Context) {
 		manager.Run()
 	}()
 
-	var serverWg sync.WaitGroup
-	serverCtx, serverCancel := context.WithCancel(ctx)
-	rafka := NewServer(manager, 5*time.Second)
-
 	serverWg.Add(1)
 	go func() {
 		defer serverWg.Done()
-		err := rafka.ListenAndServe(serverCtx, fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
+		err := server.ListenAndServe(serverCtx, fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -198,10 +196,10 @@ func run(c *cli.Context) {
 	}()
 
 	<-shutdown
-	l.Println("Received shutdown signal. Shutting down...")
+	logger.Println("Received shutdown signal. Shutting down...")
 	serverCancel()
 	serverWg.Wait()
 	managerCancel()
 	managerWg.Wait()
-	l.Println("All components shut down. Bye!")
+	logger.Println("All components shut down. Bye!")
 }
