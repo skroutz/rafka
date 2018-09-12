@@ -42,7 +42,7 @@ type Server struct {
 	// default timeout for consumer poll
 	timeout time.Duration
 
-	// clientByID contains the currently connected clients to the server.
+	// currently connected clients
 	clientByID sync.Map // map[string]*Client
 }
 

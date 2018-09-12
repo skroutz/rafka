@@ -56,18 +56,18 @@ func main() {
 			Value: 6380,
 		},
 		cli.StringFlag{
-			Name:  "kafka, k",
-			Usage: "Load librdkafka configuration from `FILE`",
-			Value: "kafka.json",
+			Name:  "config, c",
+			Usage: "Path to librdkafka configuration file",
+			Value: "librdkafka.json",
 		},
 	}
 
 	app.Before = func(c *cli.Context) error {
-		if c.String("kafka") == "" {
-			return cli.NewExitError("No librdkafka configuration provided!", 1)
+		if c.String("config") == "" {
+			return cli.NewExitError("No librdkafka configuration provided", 1)
 		}
 
-		f, err := os.Open(c.String("kafka"))
+		f, err := os.Open(c.String("config"))
 		if err != nil {
 			return err
 		}
@@ -171,20 +171,19 @@ func run(c *cli.Context) {
 	serverCtx, serverCancel := context.WithCancel(ctx)
 	managerCtx, managerCancel := context.WithCancel(ctx)
 
-	manager := NewConsumerManager(managerCtx, cfg)
-	server := NewServer(manager, 5*time.Second)
-
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	_, rdkafkaVer := rdkafka.LibraryVersion()
 	logger.Printf("Spawning Consumer Manager (librdkafka %s) | config: %v...", rdkafkaVer, cfg)
 
+	manager := NewConsumerManager(managerCtx, cfg)
 	managerWg.Add(1)
 	go func() {
 		defer managerWg.Done()
 		manager.Run()
 	}()
 
+	server := NewServer(manager, 5*time.Second)
 	serverWg.Add(1)
 	go func() {
 		defer serverWg.Done()
