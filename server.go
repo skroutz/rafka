@@ -54,7 +54,7 @@ func NewServer(manager *ConsumerManager, timeout time.Duration) *Server {
 	}
 }
 
-func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
+func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 	c := NewClient(conn, s.manager)
 	defer c.Close()
 
@@ -332,7 +332,7 @@ Loop:
 				inflightWg.Add(1)
 				go func() {
 					defer inflightWg.Done()
-					s.handleConn(ctx, conn)
+					s.Handle(ctx, conn)
 				}()
 			}
 		}
