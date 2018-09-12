@@ -36,9 +36,8 @@ import (
 )
 
 type Server struct {
-	log      *log.Logger
-	manager  *ConsumerManager
-	inFlight sync.WaitGroup // TODO(agis): make this a local var
+	log     *log.Logger
+	manager *ConsumerManager
 
 	// default timeout for consumer poll
 	timeout time.Duration
@@ -287,6 +286,8 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 }
 
 func (s *Server) ListenAndServe(ctx context.Context, hostport string) error {
+	var inflightWg sync.WaitGroup
+
 	listener, err := net.Listen("tcp", hostport)
 	if err != nil {
 		return err
@@ -328,9 +329,9 @@ Loop:
 					s.log.Println("Accept error: ", err)
 				}
 			} else {
-				s.inFlight.Add(1)
+				inflightWg.Add(1)
 				go func() {
-					defer s.inFlight.Done()
+					defer inflightWg.Done()
 					s.handleConn(ctx, conn)
 				}()
 			}
@@ -338,7 +339,7 @@ Loop:
 	}
 
 	s.log.Println("Waiting for in-flight connections...")
-	s.inFlight.Wait()
+	inflightWg.Wait()
 	s.log.Println("Bye")
 	return nil
 }
