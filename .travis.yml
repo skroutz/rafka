@@ -2,7 +2,6 @@ branches:
   only:
     - master
     - debian/stretch
-    - travis
 language: minimal
 services:
   - docker
