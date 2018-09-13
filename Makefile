@@ -29,7 +29,6 @@ runrafka:
 	./rafka -k test/kafka.test.json
 
 dockertest:
-	docker-compose -f test/docker-compose.yml up --build --no-start
-	docker-compose -f test/docker-compose.yml start
+	docker-compose -f test/docker-compose.yml up -d --build --no-start --force-recreate --remove-orphans
 	docker-compose -f test/docker-compose.yml ps
 	docker-compose -f test/docker-compose.yml exec rafka make dep build test teste2e
