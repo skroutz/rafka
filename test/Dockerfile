@@ -10,14 +10,24 @@ ADD skroutz-stable.list /etc/apt/sources.list.d/
 ADD skroutz-pu.list /etc/apt/sources.list.d/
 RUN curl -sSL http://debian.skroutz.gr/skroutz.asc | apt-key add -
 
-# TODO: install librdkafka-dev from main dist when it's backported
 RUN apt-get update && \
     apt-get install -y librdkafka-dev -t stretch-skroutz-proposed-updates && \
-    apt-get install -y --no-install-recommends golang
+    apt-get install -y \
+        golang \
+        go-dep \
+        ruby-full \
+        bundler \
+        git \
+        confluent-kafka-2.11 \
+        openjdk-8-jdk
 
-VOLUME ["/rafka"]
-WORKDIR "/rafka"
+
+ENV GOPATH /go
+ENV RAFKA rafka:6380
+VOLUME ["/go/src/github.com/skroutz/rafka"]
+WORKDIR "/go/src/github.com/skroutz/rafka"
+
 EXPOSE 6380
 
-ENTRYPOINT ["./rafka"]
-CMD ["-c", "test/librdkafka.test.json"]
+ENTRYPOINT ["make"]
+CMD ["runrafka"]
