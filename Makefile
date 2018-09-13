@@ -31,4 +31,5 @@ runrafka:
 dockertest:
 	docker-compose -f test/docker-compose.yml up --build --no-start
 	docker-compose -f test/docker-compose.yml start
+	docker-compose -f test/docker-compose.yml ps
 	docker-compose -f test/docker-compose.yml exec rafka make dep build test teste2e
