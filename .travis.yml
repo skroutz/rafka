@@ -12,6 +12,8 @@ before_script:
   - docker-compose start
   - cd $TRAVIS_BUILD_DIR
 script:
+  - docker --version
+  - docker-compose --version
   - make dockertest
 notifications:
   slack:
