@@ -35,4 +35,5 @@ dockertest:
 travis:
 	docker-compose -f test/docker-compose.yml up --build --no-start --force-recreate --remove-orphans
 	docker-compose -f test/docker-compose.yml start
+	sleep 2
 	docker-compose -f test/docker-compose.yml exec rafka make dep build test teste2e
