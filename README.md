@@ -166,6 +166,7 @@ Example using Redis:
 - [`QUIT`](https://redis.io/commands/quit)
 - `HGETALL stats`: returns a hash with various statistics useful for
   monitoring.
+- `KEYS topics:`: list all topics
 - `DEL stats`: resets the monitoring statistics.
 
 
