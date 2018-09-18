@@ -111,7 +111,14 @@ func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
 	case rdkafka.OffsetsCommitted:
 		c.log.Print(e)
 	case rdkafka.Error:
-		return nil, errors.New(e.String())
+		// Treat errors with error code ErrTransport as transient And just log them.
+		// For now all other errors cause a failure.
+		// https://github.com/edenhill/librdkafka/issues/1987#issuecomment-422008750
+		if e.Code() != rdkafka.ErrTransport {
+			return nil, errors.New(e.String())
+		}
+
+		c.log.Printf("Consumer: Poll: Transient error: %s , code: %d", e.String(), e.Code())
 	default:
 		c.log.Printf("Unknown event type: %T", e)
 	}
