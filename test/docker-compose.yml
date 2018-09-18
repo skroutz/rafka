@@ -12,6 +12,7 @@ services:
       - 6381:6380
     ulimits:
       core: -1
+      stack: 1082768
 
 networks:
   default:
