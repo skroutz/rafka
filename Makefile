@@ -32,7 +32,6 @@ run-rafka-local: dep build
 run-rafka:
 	docker-compose -f test/docker-compose.yml up --no-start --build
 	docker-compose -f test/docker-compose.yml start
-	docker-compose -f test/docker-compose.yml exec rafka make dep build
 
 testunit: run-rafka
 	docker-compose -f test/docker-compose.yml exec rafka make testunit-local
@@ -41,4 +40,4 @@ teste2e: run-rafka
 	docker-compose -f test/docker-compose.yml exec rafka make teste2e-local
 
 test: run-rafka
-	docker-compose -f test/docker-compose.yml exec rafka make testunit-local teste2e-local
+	docker-compose -f test/docker-compose.yml exec rafka make dep testunit-local teste2e-local
