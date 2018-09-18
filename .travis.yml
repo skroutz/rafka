@@ -2,7 +2,9 @@ branches:
   only:
     - master
     - debian/stretch
-language: minimal
+language: go
+go:
+  - "1.11.x"
 services:
   - docker
 before_script:
@@ -16,6 +18,7 @@ script:
   - ls -la
   - echo $GOPATH
   - ls -la $GOPATH
+  - ls -la $GOPATH/src/github.com/skroutz/rafka
   - make travis
 notifications:
   slack:
