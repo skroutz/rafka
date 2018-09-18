@@ -19,6 +19,7 @@ script:
   - echo $GOPATH
   - ls -la $GOPATH
   - ls -la $GOPATH/src/github.com/skroutz/rafka
+  - cp test/kafka.test.json kafka.json
   - make travis
 notifications:
   slack:
