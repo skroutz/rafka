@@ -5,7 +5,7 @@ services:
     build:
       context: .
     volumes:
-    - ${GOPATH}/src/github.com/skroutz/rafka:/go/src/github.com/skroutz/rafka
+    - ${GOPATH}/src/github.com/skroutz/rafka:/root/go/src/github.com/skroutz/rafka
     container_name: rafka
     hostname: rafka
     ports:

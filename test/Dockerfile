@@ -21,11 +21,10 @@ RUN apt-get update && \
         confluent-kafka-2.11 \
         openjdk-8-jdk
 
-
-ENV GOPATH /go
+ENV GOPATH /root/go
 ENV RAFKA rafka:6380
-VOLUME ["/go/src/github.com/skroutz/rafka"]
-WORKDIR "/go/src/github.com/skroutz/rafka"
+VOLUME $GOPATH/src/github.com/skroutz/rafka
+WORKDIR $GOPATH/src/github.com/skroutz/rafka
 
 EXPOSE 6380
 

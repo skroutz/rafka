@@ -1,6 +1,6 @@
 .PHONY: install dep build test teste2e testunit lint fmt clean run-rafka testunit-local teste2e-local
 
-default: fmt dep install test
+default: fmt install test
 
 install:
 	go install -v
@@ -27,7 +27,7 @@ clean:
 	go clean
 
 run-rafka:
-	docker-compose -f test/docker-compose.yml up --no-start
+	docker-compose -f test/docker-compose.yml up --no-start --build
 	docker-compose -f test/docker-compose.yml start
 	docker-compose -f test/docker-compose.yml exec rafka make dep build
 
