@@ -1,4 +1,4 @@
-.PHONY: install dep build test teste2e testunit lint fmt clean run-rafka testunit-local teste2e-local
+.PHONY: install dep build test teste2e testunit lint fmt clean run-rafka run-rafka-local testunit-local teste2e-local
 
 default: fmt install test
 
@@ -25,6 +25,9 @@ fmt:
 
 clean:
 	go clean
+
+run-rafka-local: dep build
+	./rafka -k test/kafka.test.json
 
 run-rafka:
 	docker-compose -f test/docker-compose.yml up --no-start --build

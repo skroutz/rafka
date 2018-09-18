@@ -28,4 +28,4 @@ WORKDIR $GOPATH/src/github.com/skroutz/rafka
 
 EXPOSE 6380
 
-CMD ["./rafka", "-k", "test/kafka.test.json"]
+CMD ["make", "run-rafka-local"]
