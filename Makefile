@@ -1,4 +1,4 @@
-.PHONY: install dep build test teste2e lint fmt clean runrafka dockertest
+.PHONY: install dep build test teste2e lint fmt clean runrafka dockertest travis
 
 install: fmt test
 	go install -v
@@ -24,16 +24,15 @@ fmt:
 clean:
 	go clean
 
-
-runrafka:
+runrafka: build
 	./rafka -k test/kafka.test.json
 
 dockertest:
-	docker-compose -f test/docker-compose.yml up -d --build
+	docker-compose -f test/docker-compose.yml up -d
 	docker-compose -f test/docker-compose.yml exec rafka make dep build test teste2e
 
 travis:
-	docker-compose -f test/docker-compose.yml up --build --no-start --force-recreate --remove-orphans
+	docker-compose -f test/docker-compose.yml up --no-start
 	docker-compose -f test/docker-compose.yml start
-	sleep 2
+	docker-compose -f test/docker-compose.yml ps
 	docker-compose -f test/docker-compose.yml exec rafka make dep build test teste2e
