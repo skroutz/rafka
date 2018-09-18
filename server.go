@@ -304,7 +304,7 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 				writer.Flush()
 				return
 			case "PING":
-				writeErr = writer.WriteBulkString("PONG")
+				writeErr = writer.WriteSimpleString("PONG")
 			default:
 				writeErr = writer.WriteError("Command not supported")
 			}
