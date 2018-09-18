@@ -19,7 +19,7 @@ lint:
 	golint
 
 fmt:
-	test -z `go fmt 2>&1 | tee /dev/tty`
+	test -z `go fmt 2>&1`
 
 clean:
 	go clean
