@@ -29,5 +29,4 @@ WORKDIR "/go/src/github.com/skroutz/rafka"
 
 EXPOSE 6380
 
-ENTRYPOINT ["make"]
-CMD ["runrafka"]
+CMD ["./rafka", "-k", "test/kafka.test.json"]

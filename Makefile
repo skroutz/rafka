@@ -1,6 +1,8 @@
-.PHONY: install dep build test teste2e lint fmt clean runrafka dockertest travis
+.PHONY: install dep build test teste2e testunit lint fmt clean run-rafka testunit-local teste2e-local
 
-install: fmt test
+default: fmt dep install test
+
+install:
 	go install -v
 
 dep:
@@ -9,10 +11,10 @@ dep:
 build: fmt
 	go build -v
 
-test:
+testunit-local:
 	go test -race
 
-teste2e:
+teste2e-local:
 	cd test && bundle install --frozen && ./end-to-end -v
 
 lint:
@@ -24,10 +26,16 @@ fmt:
 clean:
 	go clean
 
-runrafka: dep build
-	./rafka -k test/kafka.test.json
-
-dockertest:
+run-rafka:
 	docker-compose -f test/docker-compose.yml up --no-start
 	docker-compose -f test/docker-compose.yml start
-	docker-compose -f test/docker-compose.yml exec rafka make dep build test teste2e
+	docker-compose -f test/docker-compose.yml exec rafka make dep build
+
+testunit: run-rafka
+	docker-compose -f test/docker-compose.yml exec rafka make testunit-local
+
+teste2e: run-rafka
+	docker-compose -f test/docker-compose.yml exec rafka make teste2e-local
+
+test: run-rafka
+	docker-compose -f test/docker-compose.yml exec rafka make testunit-local teste2e-local
