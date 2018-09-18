@@ -12,6 +12,10 @@ before_script:
   - docker-compose start
   - cd $TRAVIS_BUILD_DIR
 script:
+  - pwd
+  - ls -la
+  - echo $GOPATH
+  - ls -la $GOPATH
   - make travis
 notifications:
   slack:
