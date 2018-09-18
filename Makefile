@@ -24,7 +24,7 @@ fmt:
 clean:
 	go clean
 
-runrafka: build
+runrafka: dep build
 	./rafka -k test/kafka.test.json
 
 dockertest:
