@@ -26,10 +26,10 @@ fmt:
 clean:
 	go clean
 
-run-rafka-local: dep build
+run-rafka-local: build
 	./rafka -k test/kafka.test.json
 
-run-rafka:
+run-rafka: dep
 	docker-compose -f test/docker-compose.yml up --no-start --build
 	docker-compose -f test/docker-compose.yml start
 
