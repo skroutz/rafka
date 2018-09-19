@@ -9,7 +9,7 @@ services:
   - docker
 before_install:
   - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-  - dep ensure
+  - dep ensure -v
 before_script:
   - git clone https://github.com/skroutz/kafka-cluster-testbed.git
   - cd kafka-cluster-testbed
