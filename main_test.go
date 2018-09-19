@@ -121,7 +121,7 @@ func TestConsumerOffsetCommit(t *testing.T) {
 
 // RPUSHX
 func TestProduceErr(t *testing.T) {
-	c := newClient("some:producer")
+	c := newClient("some:producer:" + t.Name())
 
 	_, err := c.RPushX("invalid-arg", "a msg").Result()
 	if err == nil {
@@ -135,7 +135,7 @@ func TestProduceErr(t *testing.T) {
 }
 
 func TestProduceWithKey(t *testing.T) {
-	c := newClient("some:producer")
+	c := newClient("some:producer:" + t.Name())
 
 	_, err := c.RPushX("topic:foo:bar", "a msg").Result()
 	if err != nil {
