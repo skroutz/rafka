@@ -15,8 +15,8 @@ before_script:
   - cd kafkaclustertestbed
   - docker-compose up --no-start zoo1 zoo2 zoo3 kc1.docker kc2.docker
   - docker-compose start
+  - cd $TRAVIS_BUILD_DIR
 script:
-  - cd $TRAVIS_BUILD_DIR && cp test/kafka.test.json kafka.json
   - make test
 notifications:
   slack:
