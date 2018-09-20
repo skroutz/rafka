@@ -11,8 +11,8 @@ before_install:
   - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
   - dep ensure -v
 before_script:
-  - git clone https://github.com/skroutz/kafka-cluster-testbed.git
-  - cd kafka-cluster-testbed
+  - git clone https://github.com/skroutz/kafka-cluster-testbed.git kafkaclustertestbed
+  - cd kafkaclustertestbed
   - docker-compose up --no-start zoo1 zoo2 zoo3 kc1.docker kc2.docker
   - docker-compose start
 script:
