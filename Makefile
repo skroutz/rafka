@@ -27,7 +27,7 @@ clean:
 	go clean
 
 run-rafka-local: build
-	./rafka -k test/kafka.test.json
+	./rafka -c test/librdkafka.test.json
 
 run-rafka: dep
 	docker-compose -f test/docker-compose.yml up --no-start --build
