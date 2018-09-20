@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -11,19 +12,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agis/spawn"
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/go-redis/redis"
 )
 
 func TestMain(m *testing.M) {
-	cfg.Port = 6382
+	cmd := spawn.New(main, "-p", "6382", "-c", "test/librdkafka.test.json")
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		main()
-		wg.Done()
-	}()
+	// start rafka
+	ctx, cancel := context.WithCancel(context.Background())
+	err := cmd.Start(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	c := newClient("wait:for-rafka")
 	serverReady := false
@@ -38,8 +40,13 @@ func TestMain(m *testing.M) {
 	}
 
 	result := m.Run()
-	shutdown <- os.Interrupt
-	wg.Wait()
+
+	cancel()
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	os.Exit(result)
 }
 

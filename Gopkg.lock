@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/agis/spawn"
+  packages = ["."]
+  revision = "2b1649feb264e6da334b227f2233b76b8d88c96c"
+
+[[projects]]
   name = "github.com/confluentinc/confluent-kafka-go"
   packages = ["kafka"]
   revision = "5e4d04e05fc319ce5996a867aafef29059f26862"
@@ -27,6 +33,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c759aaec028431cd6b2fc57b989e3a7aedfbcbf644a4d4a8eee2e4e2dd5ef55f"
+  inputs-digest = "cfe03ee098cc6aab25431931f69fee28a5db8efd013c910449fa6cf12aca7f45"
   solver-name = "gps-cdcl"
   solver-version = 1
