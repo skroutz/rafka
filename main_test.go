@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -11,19 +12,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agis/spawn"
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/go-redis/redis"
 )
 
 func TestMain(m *testing.M) {
-	cfg.Port = 6382
+	cmd := spawn.New(main, "-p", "6383", "-c", "test/librdkafka.test.json")
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		main()
-		wg.Done()
-	}()
+	// start rafka
+	ctx, cancel := context.WithCancel(context.Background())
+	err := cmd.Start(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	c := newClient("wait:for-rafka")
 	serverReady := false
@@ -38,8 +40,13 @@ func TestMain(m *testing.M) {
 	}
 
 	result := m.Run()
-	shutdown <- os.Interrupt
-	wg.Wait()
+
+	cancel()
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	os.Exit(result)
 }
 
@@ -114,7 +121,7 @@ func TestConsumerOffsetCommit(t *testing.T) {
 
 // RPUSHX
 func TestProduceErr(t *testing.T) {
-	c := newClient("some:producer")
+	c := newClient("some:producer:" + t.Name())
 
 	_, err := c.RPushX("invalid-arg", "a msg").Result()
 	if err == nil {
@@ -128,7 +135,7 @@ func TestProduceErr(t *testing.T) {
 }
 
 func TestProduceWithKey(t *testing.T) {
-	c := newClient("some:producer")
+	c := newClient("some:producer:" + t.Name())
 
 	_, err := c.RPushX("topic:foo:bar", "a msg").Result()
 	if err != nil {
@@ -261,7 +268,7 @@ func TestParseConfig(t *testing.T) {
 func newClient(id string) *redis.Client {
 	return redis.NewClient(&redis.Options{
 		// TODO Add the ability to read host and port from a cfg file
-		Addr:      fmt.Sprintf("%s:%d", "localhost", 6382),
+		Addr:      fmt.Sprintf("%s:%d", "localhost", 6383),
 		OnConnect: setName(id)})
 }
 

@@ -45,7 +45,7 @@ def with_new_topic(topic: "r-#{rand_id}", partitions: 4, replication_factor: 2,
 end
 
 def create_kafka_topic!(topic, part, repl_factor)
-  out = `docker exec -it kc2 kafka-topics --create --topic #{topic} \
+  out = `kafka-topics --create --topic #{topic} \
          --partitions #{part} --replication-factor #{repl_factor} \
          --zookeeper \"zoo1,zoo2,zoo3\"`
 
@@ -53,7 +53,7 @@ def create_kafka_topic!(topic, part, repl_factor)
 end
 
 def delete_kafka_topic!(topic)
-  out = `docker exec -it kc1 kafka-topics --delete --topic #{topic} --if-exists \
+  out = `kafka-topics --delete --topic #{topic} --if-exists \
          --zookeeper \"zoo1,zoo2,zoo3\"`
 
   raise "Error deleting topic #{topic}: #{out}" if !$?.success?

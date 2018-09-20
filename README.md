@@ -61,7 +61,7 @@ Getting Started
    ```
 3. Run it:
    ```shell
-   $ rafka -k kafka.json.sample
+   $ rafka -c librdkafka.json.sample
    [rafka] 2017/06/26 11:07:23 Spawning Consumer Manager (librdkafka 0.11.0)...
    [server] 2017/06/26 11:07:23 Listening on 0.0.0.0:6380
    ```

@@ -1,20 +1,43 @@
-.PHONY: install build test lint fmt clean
+.PHONY: install dep build test teste2e testunit lint fmt clean run-rafka run-rafka-local testunit-local teste2e-local
 
-install: fmt test
+default: fmt install test
+
+install:
 	go install -v
 
-build: fmt test
+dep:
+	dep ensure -v
+
+build: fmt
 	go build -v
 
-test:
+testunit-local:
 	go test -race
+
+teste2e-local:
 	cd test && bundle install --frozen && ./end-to-end -v
 
 lint:
 	golint
 
 fmt:
-	! gofmt -d -e -s *.go 2>&1 | tee /dev/tty | read
+	test -z `go fmt 2>&1`
 
 clean:
 	go clean
+
+run-rafka-local: build
+	./rafka -c test/librdkafka.test.json
+
+run-rafka: dep
+	docker-compose -f test/docker-compose.yml up --no-start --build
+	docker-compose -f test/docker-compose.yml start
+
+testunit: run-rafka
+	docker-compose -f test/docker-compose.yml exec rafka make testunit-local
+
+teste2e: run-rafka
+	docker-compose -f test/docker-compose.yml exec rafka make teste2e-local
+
+test: run-rafka
+	docker-compose -f test/docker-compose.yml exec rafka make testunit-local teste2e-local

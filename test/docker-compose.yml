@@ -1,15 +1,18 @@
 version: '2'
 services:
   rafka:
-    container_name: rafka_server
     image: skroutz/rafka
     build:
       context: .
-    hostname: rafka
     volumes:
-      - ../:/rafka
+    - ${GOPATH}/src/github.com/skroutz/rafka:/root/go/src/github.com/skroutz/rafka
+    container_name: rafka
+    hostname: rafka
     ports:
       - 6381:6380
+    ulimits:
+      core: -1
+      stack: 1082768
 
 networks:
   default:
