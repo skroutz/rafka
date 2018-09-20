@@ -5,6 +5,9 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 ## master (unreleased)
 
+### Fixed
+
+- Ignore non-critical "Poll GroupCoordinator" errors [[#69](https://github.com/skroutz/rafka/pull/69)]
 
 
 
