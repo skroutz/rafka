@@ -43,6 +43,7 @@ type Client struct {
 // should be closed with Close().
 func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
 	id := conn.RemoteAddr().String()
+
 	return &Client{
 		id:          id,
 		conn:        conn,
@@ -53,8 +54,8 @@ func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
 	}
 }
 
-// SetID sets the id for c. It returns an error if id is not in the form
-// "<consumer-group>:<consumer-id>".
+// SetID sets the id for c. It returns an error if id is not in the form of
+// <consumer-group>:<consumer-id>.
 func (c *Client) SetID(id string) error {
 	if c.consReady {
 		return errors.New("Client ID is already set to " + c.id)
@@ -64,9 +65,10 @@ func (c *Client) SetID(id string) error {
 	if len(parts) != 2 {
 		return errors.New("Cannot parse group.id")
 	}
+
 	c.id = id
 	c.consGID = parts[0]
-	c.log.SetPrefix(fmt.Sprintf("[client-%s] ", id))
+	c.log.SetPrefix(fmt.Sprintf("[client-%s] ", c.id))
 	c.consReady = true
 	return nil
 }
