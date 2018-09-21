@@ -10,6 +10,11 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 - Ignore non-critical "Poll GroupCoordinator" errors [[#69](https://github.com/skroutz/rafka/pull/69)]
 
 
+### Changed
+
+- `--kafka/-k` flag is renamed to `--config/-c` [[9be4ea8](https://github.com/skroutz/rafka/commit/9be4ea84d2e7ddf8b33d90e0f6489dd07335dfef)]
+
+
 
 
 
