@@ -1,3 +1,13 @@
+rafka (0.1.0-1) stretch; urgency=medium
+
+  [ Dimitris Bachtis ]
+  * consumer: poll: ignore transient error
+
+  [ Agis Anastasopoulos ]
+  * debian: Replace -k with -c
+
+ -- Agis Anastasopoulos <agis.anast@gmail.com>  Mon, 24 Sep 2018 12:14:27 +0300
+
 rafka (0.0.16-1) stretch; urgency=medium
 
   * Use integers when decoding JSON configuration
