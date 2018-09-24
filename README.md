@@ -1,5 +1,6 @@
 Rafka
 ==============================
+[![Build Status](https://api.travis-ci.org/skroutz/rafka.svg?branch=master)](https://travis-ci.org/skroutz/rafka)
 [![Go report](https://goreportcard.com/badge/github.com/skroutz/rafka)](https://goreportcard.com/report/github.com/skroutz/rafka)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
@@ -60,7 +61,7 @@ Getting Started
    ```
 3. Run it:
    ```shell
-   $ rafka -k kafka.json.sample
+   $ rafka -c librdkafka.json.sample
    [rafka] 2017/06/26 11:07:23 Spawning Consumer Manager (librdkafka 0.11.0)...
    [server] 2017/06/26 11:07:23 Listening on 0.0.0.0:6380
    ```
@@ -171,8 +172,9 @@ Example using Redis:
 
 - [`PING`](https://redis.io/commands/ping)
 - [`QUIT`](https://redis.io/commands/quit)
-- `HGETALL stats`: returns a hash with various statistics. Typically used for
+- `HGETALL stats`: returns a hash with various statistics useful for
   monitoring.
+- `DEL stats`: resets the monitoring statistics.
 
 
 

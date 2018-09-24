@@ -56,18 +56,18 @@ func main() {
 			Value: 6380,
 		},
 		cli.StringFlag{
-			Name:  "kafka, k",
-			Usage: "Load librdkafka configuration from `FILE`",
-			Value: "kafka.json",
+			Name:  "config, c",
+			Usage: "Path to librdkafka configuration file",
+			Value: "librdkafka.json",
 		},
 	}
 
 	app.Before = func(c *cli.Context) error {
-		if c.String("kafka") == "" {
-			return cli.NewExitError("No librdkafka configuration provided!", 1)
+		if c.String("config") == "" {
+			return cli.NewExitError("No librdkafka configuration provided", 1)
 		}
 
-		f, err := os.Open(c.String("kafka"))
+		f, err := os.Open(c.String("config"))
 		if err != nil {
 			return err
 		}
@@ -165,32 +165,29 @@ func main() {
 }
 
 func run(c *cli.Context) {
-	l := log.New(os.Stderr, "[rafka] ", log.Ldate|log.Ltime)
+	var serverWg, managerWg sync.WaitGroup
+	logger := log.New(os.Stderr, "[rafka] ", log.Ldate|log.Ltime)
+	ctx := context.Background()
+	serverCtx, serverCancel := context.WithCancel(ctx)
+	managerCtx, managerCancel := context.WithCancel(ctx)
 
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
-	ctx := context.Background()
-
 	_, rdkafkaVer := rdkafka.LibraryVersion()
-	l.Printf("Spawning Consumer Manager (librdkafka %s) | config: %v...", rdkafkaVer, cfg)
-	var managerWg sync.WaitGroup
-	managerCtx, managerCancel := context.WithCancel(ctx)
-	manager := NewConsumerManager(managerCtx, cfg)
+	logger.Printf("Spawning Consumer Manager (librdkafka %s) | config: %v...", rdkafkaVer, cfg)
 
+	manager := NewConsumerManager(managerCtx, cfg)
 	managerWg.Add(1)
 	go func() {
 		defer managerWg.Done()
 		manager.Run()
 	}()
 
-	var serverWg sync.WaitGroup
-	serverCtx, serverCancel := context.WithCancel(ctx)
-	rafka := NewServer(serverCtx, manager, 5*time.Second)
-
+	server := NewServer(manager, 5*time.Second)
 	serverWg.Add(1)
 	go func() {
 		defer serverWg.Done()
-		err := rafka.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
+		err := server.ListenAndServe(serverCtx, fmt.Sprintf("%s:%d", cfg.Host, cfg.Port))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -198,10 +195,10 @@ func run(c *cli.Context) {
 	}()
 
 	<-shutdown
-	l.Println("Received shutdown signal. Shutting down...")
+	logger.Println("Received shutdown signal. Shutting down...")
 	serverCancel()
 	serverWg.Wait()
 	managerCancel()
 	managerWg.Wait()
-	l.Println("All components shut down. Bye!")
+	logger.Println("All components shut down. Bye!")
 }

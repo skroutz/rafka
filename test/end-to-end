@@ -8,7 +8,7 @@ require "minitest/autorun"
 require "rafka"
 require_relative "test_helper"
 
-host_port = (ENV["RAFKA"] || "localhost:6380").split(":")
+host_port = (ENV["RAFKA"] || "localhost:6381").split(":")
 host, port = host_port[0], Integer(host_port[1])
 
 CLIENT_DEFAULTS = { host: host, port: port, redis: { reconnect_attempts: 5 } }
@@ -459,9 +459,15 @@ puts "\nRunning on #{host_port.join(":")} " \
      "(rafka-rb #{Rafka::VERSION}, CONSUME_RETRIES=#{CONSUME_RETRIES}, " \
      "CONSUME_TIMEOUT=#{CONSUME_TIMEOUT})..."
 
-if Rafka::Producer.new(CLIENT_DEFAULTS).ping != "PONG"
-  abort "Could not PING Rafka server. Is it up?"
+retries = 0
+rafka_up = false
+while retries < 4 && !rafka_up
+  retries += 1
+  rafka_up = Rafka::Producer.new(CLIENT_DEFAULTS).ping == "PONG"
+  sleep 1
 end
+
+abort "Could not PING Rafka server. Is it up?" if !rafka_up
 
 $topics = []
 
