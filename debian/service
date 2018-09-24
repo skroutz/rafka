@@ -6,7 +6,7 @@ Documentation=https://github.com/skroutz/rafka
 [Service]
 Type=simple
 EnvironmentFile=-/etc/default/rafka
-ExecStart=/usr/bin/rafka --kafka /etc/rafka/config.json $ARGS
+ExecStart=/usr/bin/rafka --config /etc/rafka/librdkafka.json $ARGS
 TimeoutStopSec=10
 User=rafka
 Group=rafka
