@@ -112,14 +112,6 @@ to Kafka (eg. when the client connection is closed), `DUMP` can also be used to
 force a synchronous flush of the messages.
 
 
-Usage
--------------------------------------------------------------------------------
-
-```shell
-$ vim kafka.json.sample # Add brokers
-$ go build && ./rafka -c ./kafka.json.sample
-```
-
 
 API
 ------------------------------------------------------------------------------
