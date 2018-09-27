@@ -9,7 +9,7 @@ dep:
 	dep ensure -v
 
 build: fmt
-	go build -v
+	go build -v -ldflags '-X main.VersionSuffix=$(shell git rev-parse HEAD)'
 
 testunit-local:
 	go test -race

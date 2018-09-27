@@ -32,10 +32,15 @@ import (
 	"github.com/urfave/cli"
 )
 
+const Version = "0.1.0"
+
 var (
 	cfg      Config
 	stats    Stats
 	shutdown = make(chan os.Signal, 1)
+
+	// populated at build-time with -ldflags
+	VersionSuffix string
 )
 
 func main() {
@@ -44,8 +49,11 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "rafka"
 	app.Usage = "Kafka with a Redis API"
-	app.HideVersion = true
-
+	app.HideVersion = false
+	app.Version = Version
+	if VersionSuffix != "" {
+		app.Version = Version + "-" + VersionSuffix[:7]
+	}
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "host",
