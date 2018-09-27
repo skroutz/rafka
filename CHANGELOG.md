@@ -8,6 +8,10 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 - Support for listing topics [[#66](https://github.com/skroutz/rafka/pull/66)]
 
+### Changed
+
+- Shutdown process is more robust with less downtime for producers [[#68](https://github.com/skroutz/rafka/pull/68)]
+
 
 
 
