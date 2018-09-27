@@ -36,11 +36,11 @@ for more information.
 
 
 
-Dependencies
+Requirements
 -------------------------------------------------------------------------------
-- [Go 1.9 or later](https://golang.org/)
+
 - [librdkafka 0.11.0 or later](https://github.com/edenhill/librdkafka)
-- for the rest see `Gopkg.toml`
+- A Kafka cluster
 
 
 
