@@ -139,6 +139,40 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 					break
 				}
 				writeErr = writer.WriteObjects(stats.toRedis()...)
+			// List all topics
+			//
+			// KEYS
+			case "KEYS":
+				arg1 := string(command.Get(1))
+				if arg1 != "topics:" {
+					writeErr = writer.WriteError("ERR Expected argument to be 'topics:', got " + arg1)
+					break
+				}
+
+				prod, err := c.Producer(cfg.Librdkafka.Producer)
+				if err != nil {
+					writeErr = writer.WriteError("ERR Error spawning producer: " + err.Error())
+					break
+				}
+
+				metadata, err := prod.rdProd.GetMetadata(nil, true, 100)
+				if err != nil {
+					writeErr = writer.WriteError("ERR Error getting metadata: " + err.Error())
+					break
+				}
+
+				var topic_names []interface{}
+
+				for topic_name, _ := range metadata.Topics {
+					topic_names = append(topic_names, "topics:"+topic_name)
+				}
+
+				if len(topic_names) > 0 {
+					writeErr = writer.WriteObjects(topic_names...)
+				} else {
+					// we need to return empty array here
+					_, writeErr = writer.Write([]byte{'*', '0', '\r', '\n'})
+				}
 			// Reset producer/consumer statistics
 			//
 			// DEL stats
@@ -270,7 +304,7 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 				writer.Flush()
 				return
 			case "PING":
-				writeErr = writer.WriteBulkString("PONG")
+				writeErr = writer.WriteSimpleString("PONG")
 			default:
 				writeErr = writer.WriteError("Command not supported")
 			}
