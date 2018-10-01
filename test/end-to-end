@@ -461,10 +461,16 @@ puts "\nRunning on #{host_port.join(":")} " \
 
 retries = 0
 rafka_up = false
+
 while retries < 4 && !rafka_up
   retries += 1
-  rafka_up = Rafka::Producer.new(CLIENT_DEFAULTS).ping == "PONG"
-  sleep 1
+
+  begin
+    rafka_up = Rafka::Producer.new(CLIENT_DEFAULTS).ping == "PONG"
+  rescue => Redis::CannotConnectError
+    rafka_up = false
+    sleep 1
+  end
 end
 
 abort "Could not PING Rafka server. Is it up?" if !rafka_up

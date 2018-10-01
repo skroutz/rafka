@@ -4,7 +4,8 @@
    "bootstrap.servers": "kc1.docker,kc2.docker",
    "session.timeout.ms": 2000,
    "log.connection.close": false,
-   "heartbeat.interval.ms": 500
+   "heartbeat.interval.ms": 500,
+   "log_level": 0
  },
  "consumer": {
    "go.events.channel.enable": false,

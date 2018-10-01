@@ -36,8 +36,12 @@ import (
 )
 
 type Server struct {
-	log     *log.Logger
-	manager *ConsumerManager
+	log      *log.Logger
+	listener net.Listener
+
+	manager       *ConsumerManager
+	managerCancel func()
+	managerWg     sync.WaitGroup
 
 	// default timeout for consumer poll
 	timeout time.Duration
@@ -46,9 +50,8 @@ type Server struct {
 	clientByID sync.Map // map[string]*Client
 }
 
-func NewServer(manager *ConsumerManager, timeout time.Duration) *Server {
+func NewServer(timeout time.Duration) *Server {
 	return &Server{
-		manager: manager,
 		timeout: timeout,
 		log:     log.New(os.Stderr, "[server] ", log.Ldate|log.Ltime),
 	}
@@ -139,6 +142,40 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 					break
 				}
 				writeErr = writer.WriteObjects(stats.toRedis()...)
+			// List all topics
+			//
+			// KEYS
+			case "KEYS":
+				arg1 := string(command.Get(1))
+				if arg1 != "topics:" {
+					writeErr = writer.WriteError("ERR Expected argument to be 'topics:', got " + arg1)
+					break
+				}
+
+				prod, err := c.Producer(cfg.Librdkafka.Producer)
+				if err != nil {
+					writeErr = writer.WriteError("ERR Error spawning producer: " + err.Error())
+					break
+				}
+
+				metadata, err := prod.rdProd.GetMetadata(nil, true, 100)
+				if err != nil {
+					writeErr = writer.WriteError("ERR Error getting metadata: " + err.Error())
+					break
+				}
+
+				var topic_names []interface{}
+
+				for topic_name, _ := range metadata.Topics {
+					topic_names = append(topic_names, "topics:"+topic_name)
+				}
+
+				if len(topic_names) > 0 {
+					writeErr = writer.WriteObjects(topic_names...)
+				} else {
+					// we need to return empty array here
+					_, writeErr = writer.Write([]byte{'*', '0', '\r', '\n'})
+				}
 			// Reset producer/consumer statistics
 			//
 			// DEL stats
@@ -239,7 +276,7 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 			case "CLIENT":
 				subcmd := strings.ToUpper(string(command.Get(1)))
 				switch subcmd {
-				// Set the consumer group.id
+				// Set the consumer group.id and name
 				//
 				// CLIENT SETNAME <group.id>:<name>
 				case "SETNAME":
@@ -260,8 +297,9 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 					s.clientByID.Store(newID, c)
 					s.clientByID.Delete(prevID)
 					writeErr = writer.WriteBulkString("OK")
+				// Get the consumer group.id and name
 				case "GETNAME":
-					writeErr = writer.WriteBulkString(c.String())
+					writeErr = writer.WriteBulkString(c.id)
 				default:
 					writeErr = writer.WriteError("CONS Command not supported")
 				}
@@ -270,7 +308,7 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 				writer.Flush()
 				return
 			case "PING":
-				writeErr = writer.WriteBulkString("PONG")
+				writeErr = writer.WriteSimpleString("PONG")
 			default:
 				writeErr = writer.WriteError("Command not supported")
 			}
@@ -286,33 +324,30 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 }
 
 func (s *Server) ListenAndServe(ctx context.Context, hostport string) error {
-	var inflightWg sync.WaitGroup
+	var wg, inflightWg sync.WaitGroup
+	var err error
 
-	listener, err := net.Listen("tcp", hostport)
+	managerCtx, managerCancel := context.WithCancel(ctx)
+	s.manager = NewConsumerManager(managerCtx, cfg)
+	s.managerCancel = managerCancel
+
+	s.managerWg.Add(1)
+	go func() {
+		defer s.managerWg.Done()
+		s.manager.Run()
+	}()
+
+	s.listener, err = net.Listen("tcp", hostport)
 	if err != nil {
 		return err
 	}
 	s.log.Print("Listening on " + hostport)
 
+	wg.Add(1)
 	go func() {
-		<-ctx.Done() // unblock Accept()
-		listener.Close()
-
-		closeFunc := func(id, client interface{}) bool {
-			c, ok := client.(*Client)
-			if !ok {
-				s.log.Printf("Couldn't convert %#v to Client", c)
-				return false
-			}
-			// This ugliness is due to the go-redisproto parser's
-			// not having a selectable channel for reading input.
-			// We're stuck with blocking on ReadCommand() and
-			// unblocking it by closing the client's connection.
-			c.conn.Close()
-			s.clientByID.Delete(c.id)
-			return true
-		}
-		s.clientByID.Range(closeFunc)
+		defer wg.Done()
+		<-ctx.Done()
+		s.shutdown()
 	}()
 
 Loop:
@@ -321,7 +356,7 @@ Loop:
 		case <-ctx.Done():
 			break Loop
 		default:
-			conn, err := listener.Accept()
+			conn, err := s.listener.Accept()
 			if err != nil {
 				// we know that closing a listener that blocks
 				// on Accept() will return this error
@@ -338,10 +373,61 @@ Loop:
 		}
 	}
 
-	s.log.Println("Waiting for in-flight connections...")
+	wg.Wait()
 	inflightWg.Wait()
-	s.log.Println("Bye")
 	return nil
+}
+
+// shutdown closes current clients and also stops accepting new clients in a
+// non-blocking manner
+func (s *Server) shutdown() {
+	s.manager.StopAcceptingConsumers()
+	s.managerCancel()
+
+	// Close clients with at least 1 consumer. These clients may have
+	// producers too, but we assume that they are non-critical so we close
+	// them at this point too, which is earlier than the others (see below).
+	s.clientByID.Range(func(id, client interface{}) bool {
+		c, ok := client.(*Client)
+		if !ok {
+			s.log.Printf("Couldn't convert %#v to Client", c)
+			return false
+		}
+
+		if len(c.consumers) > 0 {
+			// This ugliness is due to the go-redisproto parser's
+			// not having a selectable channel for reading input.
+			// We're stuck with blocking on ReadCommand() and
+			// unblocking it by closing the client's connection.
+			c.conn.Close()
+		}
+
+		return true
+	})
+
+	// wait for consumers to actually close
+	s.managerWg.Wait()
+
+	// stop accepting new clients and unblock Accept()
+	err := s.listener.Close()
+	if err != nil {
+		log.Printf("error closing listener: %s", err)
+	}
+
+	// close the rest of the clients (ie. those that have only producers).
+	s.clientByID.Range(func(id, client interface{}) bool {
+		c, ok := client.(*Client)
+		if !ok {
+			s.log.Printf("Couldn't convert %#v to Client", c)
+			return false
+		}
+		// This ugliness is due to the go-redisproto parser's
+		// not having a selectable channel for reading input.
+		// We're stuck with blocking on ReadCommand() and
+		// unblocking it by closing the client's connection.
+		c.conn.Close()
+		return true
+	})
 }
 
 // parseTopicsAndConfig parses the "topics:topic1,topic2:{config}" into

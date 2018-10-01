@@ -36,11 +36,11 @@ for more information.
 
 
 
-Dependencies
+Requirements
 -------------------------------------------------------------------------------
-- [Go 1.9 or later](https://golang.org/)
+
 - [librdkafka 0.11.0 or later](https://github.com/edenhill/librdkafka)
-- for the rest see `Gopkg.toml`
+- A Kafka cluster
 
 
 
@@ -112,14 +112,6 @@ to Kafka (eg. when the client connection is closed), `DUMP` can also be used to
 force a synchronous flush of the messages.
 
 
-Usage
--------------------------------------------------------------------------------
-
-```shell
-$ vim kafka.json.sample # Add brokers
-$ go build && ./rafka -k ./kafka.json.sample
-```
-
 
 API
 ------------------------------------------------------------------------------
@@ -174,6 +166,7 @@ Example using Redis:
 - [`QUIT`](https://redis.io/commands/quit)
 - `HGETALL stats`: returns a hash with various statistics useful for
   monitoring.
+- `KEYS topics:`: list all topics
 - `DEL stats`: resets the monitoring statistics.
 
 

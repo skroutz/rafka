@@ -25,45 +25,62 @@ import (
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-type consumerPool map[ConsumerID]*consumerPoolEntry
 type ConsumerID string
+
+type consumerPool map[ConsumerID]*consumerPoolEntry
+
 type consumerPoolEntry struct {
 	consumer *Consumer
 	cancel   context.CancelFunc
 }
 
 type ConsumerManager struct {
-	mu   sync.Mutex
-	pool consumerPool
-
 	log         *log.Logger
 	consumersWg sync.WaitGroup
 	ctx         context.Context
 	cfg         Config
+
+	muPool sync.Mutex
+	pool   consumerPool
+
+	muTeardown sync.Mutex
+	teardown   bool
 }
 
 func NewConsumerManager(ctx context.Context, cfg Config) *ConsumerManager {
 	return &ConsumerManager{
-		log:  log.New(os.Stderr, "[manager] ", log.Ldate|log.Ltime),
-		pool: make(consumerPool),
-		ctx:  ctx,
-		cfg:  cfg}
+		log:      log.New(os.Stderr, "[manager] ", log.Ldate|log.Ltime),
+		pool:     make(consumerPool),
+		ctx:      ctx,
+		cfg:      cfg,
+		teardown: false}
 }
 
 func (m *ConsumerManager) Run() {
 	<-m.ctx.Done()
-	m.log.Println("Waiting for all consumers to finish...")
 	m.consumersWg.Wait()
-	m.log.Println("All consumers shut down. Bye")
+}
+
+func (m *ConsumerManager) StopAcceptingConsumers() {
+	m.muTeardown.Lock()
+	defer m.muTeardown.Unlock()
+	m.teardown = true
 }
 
 // GetOrCreate returns the Consumer denoted by cid. If such a Consumer does not
 // exist, a new one is created.
 func (m *ConsumerManager) GetOrCreate(cid ConsumerID, gid string, topics []string, cfg rdkafka.ConfigMap) (*Consumer, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.muPool.Lock()
+	defer m.muPool.Unlock()
 
 	if _, ok := m.pool[cid]; !ok {
+		m.muTeardown.Lock()
+		defer m.muTeardown.Unlock()
+
+		if m.teardown {
+			return nil, ErrShutdown
+		}
+
 		// apparently, reusing the same config between consumers
 		// silently makes them non-operational
 		kafkaCfg := rdkafka.ConfigMap{}
@@ -114,8 +131,8 @@ func (m *ConsumerManager) GetOrCreate(cid ConsumerID, gid string, topics []strin
 }
 
 func (m *ConsumerManager) ByID(cid ConsumerID) (*Consumer, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.muPool.Lock()
+	defer m.muPool.Unlock()
 
 	entry, ok := m.pool[cid]
 	if !ok {
@@ -131,8 +148,8 @@ func (m *ConsumerManager) ByID(cid ConsumerID) (*Consumer, error) {
 // It does not block until the consumer is actually closed (this is instead
 // done when ConsumerManager is closed).
 func (m *ConsumerManager) ShutdownConsumer(cid ConsumerID) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.muPool.Lock()
+	defer m.muPool.Unlock()
 
 	c, ok := m.pool[cid]
 	if !ok {

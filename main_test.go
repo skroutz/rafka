@@ -265,6 +265,16 @@ func TestParseConfig(t *testing.T) {
 	}
 }
 
+// KEYS
+func TestMetadataQuery(t *testing.T) {
+	c := newClient("someone:random_producer")
+
+	_, err := c.Keys("topics:").Result()
+	if err != nil {
+		t.Errorf("Could not execute KEYS command: `%s`", err)
+	}
+}
+
 func newClient(id string) *redis.Client {
 	return redis.NewClient(&redis.Options{
 		// TODO Add the ability to read host and port from a cfg file

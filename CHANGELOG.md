@@ -10,6 +10,21 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 
 
+## 0.2.0 (2018-10-01)
+
+### Added
+
+- Support for listing topics [[#66](https://github.com/skroutz/rafka/pull/66)]
+- Flag for displaying the rafka version (`--version/-v`) [[c650dd0](https://github.com/skroutz/rafka/commit/c650dd063d3468e80e3b7d96549285ffa1d7c951)]
+
+### Changed
+
+- Shutdown process is more robust with less downtime for producers [[#68](https://github.com/skroutz/rafka/pull/68)]
+
+
+
+
+
 
 
 ## 0.1.0 (2018-09-24)
