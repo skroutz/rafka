@@ -1,3 +1,15 @@
+rafka (0.2.0-1) stretch; urgency=medium
+
+  [ George Papanikolaou ]
+  * server: Add support for KEYS cmd to list topics
+  * server: PING cmd should return SimpleString instead of Bulk
+
+  [ Agis Anastasopoulos ]
+  * Shutdown process overhaul
+  * Add '--version' flag
+
+ -- Agis Anastasopoulos <agis.anast@gmail.com>  Mon, 01 Oct 2018 12:05:56 +0300
+
 rafka (0.1.0-1) stretch; urgency=medium
 
   [ Dimitris Bachtis ]
