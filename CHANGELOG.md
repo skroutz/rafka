@@ -4,6 +4,14 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 ## master (unreleased)
 
+
+
+
+
+
+
+## 0.2.0 (2018-10-01)
+
 ### Added
 
 - Support for listing topics [[#66](https://github.com/skroutz/rafka/pull/66)]
