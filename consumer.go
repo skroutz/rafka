@@ -132,6 +132,10 @@ func (c *Consumer) SetOffset(topic string, partition int32, pos rdkafka.Offset) 
 	if pos < 0 {
 		return fmt.Errorf("offset cannot be negative, got %d", pos)
 	}
+
+	// Calling StoreOffsets manually prohibits the caller from using
+	// `enable.auto.offset.store` option.
+	// See https://github.com/edenhill/librdkafka/blob/v0.11.4/src/rdkafka.h#L2665
 	_, err := c.consumer.StoreOffsets([]rdkafka.TopicPartition{
 		{
 			Topic:     &topic,
