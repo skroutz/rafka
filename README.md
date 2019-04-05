@@ -98,8 +98,11 @@ Each consumer must identify itself upon connection, by using `client setname
 calls on the desired topics. Each message should be explicitly acknowledged
 so it can be committed to Kafka. Acks are `rpush`ed to the special `acks` key.
 
-For more info refer to [API - Consumer](https://github.com/skroutz/rafka#consumer-1).
+Since rafka consumers store offsets manually the librdkafka's
+`enable.auto.offset.store` option [must](https://github.com/edenhill/librdkafka/blob/v0.11.4/src/rdkafka.h#L2665)
+always be `false`.
 
+For more info refer to [API - Consumer](https://github.com/skroutz/rafka#consumer-1).
 
 
 
