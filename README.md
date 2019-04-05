@@ -98,13 +98,19 @@ Each consumer must identify itself upon connection, by using `client setname
 calls on the desired topics. Each message should be explicitly acknowledged
 so it can be committed to Kafka. Acks are `rpush`ed to the special `acks` key.
 
-Since rafka consumers store offsets manually the librdkafka's
-`enable.auto.offset.store` option [must](https://github.com/edenhill/librdkafka/blob/v0.11.4/src/rdkafka.h#L2665)
-always be `false`.
+
 
 For more info refer to [API - Consumer](https://github.com/skroutz/rafka#consumer-1).
 
+#### Caveats
 
+rafka periodically calls [`Consumer.StoreOffsets()`](https://docs.confluent.io/current/clients/confluent-kafka-go/index.html#Consumer.StoreOffsets) under the hood. This means consumers must be
+configured accordingly:
+
+- `enable.auto.commit` must be set to `true`
+- `enable.auto.offset.store` [must](https://github.com/edenhill/librdkafka/blob/v0.11.4/src/rdkafka.h#L2665) be set to `false`
+
+For more info see https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md.
 
 ### Producer
 Each client connection is tied to a single Producer.
