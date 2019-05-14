@@ -4,6 +4,16 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 ## master (unreleased)
 
+
+
+
+
+
+
+
+
+## 0.3.0 (2019-05-14)
+
 ### Added
 
 - The server now logs errors during writing or flushing a response to the
