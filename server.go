@@ -69,16 +69,13 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
-	var writeErr error
+	var parseErr, writeErr error
+
 	for {
-		command, err := parser.ReadCommand()
-		if err != nil {
-			_, ok := err.(*redisproto.ProtocolError)
-			if ok {
-				writeErr = writer.WriteError(err.Error())
-			} else {
-				break
-			}
+		var command *redisproto.Command
+		command, parseErr = parser.ReadCommand()
+		if parseErr != nil {
+			writeErr = writer.WriteError(parseErr.Error())
 		} else {
 			cmd := strings.ToUpper(string(command.Get(0)))
 			switch cmd {
@@ -313,11 +310,10 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 				writeErr = writer.WriteError("Command not supported")
 			}
 		}
-		if command.IsLast() {
+		if parseErr != nil || command.IsLast() {
 			writer.Flush()
 		}
-		if writeErr != nil {
-			// TODO(agis) log these errors
+		if parseErr != nil || writeErr != nil {
 			break
 		}
 	}
