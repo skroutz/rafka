@@ -124,8 +124,13 @@ Produced messages are buffered in rafka and are eventually flushed
 to Kafka. However, `DUMP` can be used to force a synchronous flush of any
 outstanding messages.
 
+
 For more info refer to [API - Producer](https://github.com/skroutz/rafka#producer-1).
 
+#### Caveats
+
+There is currently is an upper message limit of **32MB** to the messages that
+may be produced. It is controlled by `go-redisproto.MaxBulkSize`.
 
 
 
