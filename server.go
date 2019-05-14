@@ -319,9 +319,15 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 			}
 		}
 		if parseErr != nil || command.IsLast() {
-			writer.Flush()
+			err := writer.Flush()
+			if err != nil {
+				s.log.Println("Error flushing response:", err)
+			}
 		}
 		if parseErr != nil || writeErr != nil {
+			if writeErr != nil {
+				s.log.Println("Error writing response:", writeErr)
+			}
 			break
 		}
 	}
