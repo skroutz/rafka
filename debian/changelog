@@ -1,3 +1,24 @@
+rafka (0.3.0-1) stretch; urgency=medium
+
+  [ Agis Anastasopoulos ]
+  * Minor README improvements
+  * Follow-up to f32c5b3
+
+  [ Aggelos Avgerinos ]
+  * doc: Add note for `enable.auto.offset.store` incompatibility with rafka
+  * d/control: Add self to uploaders
+
+  [ Agis Anastasopoulos ]
+  * doc: Clarify consumer configuration caveats
+  * Properly return parse errors to clients
+  * redisproto: Bump message size limit to 32MB
+  * readme: Remove outdated testing instructions
+  * Log response write/flush errors
+  * Update changelog for #75
+  * Prepare for 0.3.0
+
+ -- Aggelos Avgerinos <evaggelos.avgerinos@gmail.com>  Wed, 15 May 2019 10:22:41 +0300
+
 rafka (0.2.0-1) stretch; urgency=medium
 
   [ George Papanikolaou ]
