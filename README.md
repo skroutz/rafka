@@ -1,12 +1,13 @@
-Rafka
+rafka
 ==============================
 [![Build Status](https://api.travis-ci.org/skroutz/rafka.svg?branch=master)](https://travis-ci.org/skroutz/rafka)
 [![Go report](https://goreportcard.com/badge/github.com/skroutz/rafka)](https://goreportcard.com/report/github.com/skroutz/rafka)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Rafka is a gateway service that exposes Kafka using simple semantics.
+rafka is a gateway service that exposes Kafka using simple semantics.
 
-It implements a small subset of the [Redis protocol](https://redis.io/topics/protocol), so that it can be used by leveraging existing Redis client libraries.
+It implements a small subset of the [Redis protocol](https://redis.io/topics/protocol),
+so that it can be used by leveraging existing Redis client libraries.
 
 
 
@@ -17,18 +18,18 @@ Rationale
 Using Kafka with languages that lack a reliable, solid client library can be a
 problem for mission-critical applications.
 
-Using Rafka we can:
+Using rafka we can:
 
 - Hide Kafka low-level details from the application and provide sane defaults,
   backed by the excellent [librdkafka](https://github.com/edenhill/librdkafka).
 - Use a Redis client instead of a Kafka client. This particularly useful
   in languages that lack a proper Kafka client library or do not provide
   concurrency primitives to implement buffering and other optimizations. Furthermore,
-  writing a Rafka client is much easier than writing a Kafka client. For a
+  writing a rafka client is much easier than writing a Kafka client. For a
   list of available client libraries see [_Client libraries_](#client-libraries).
 
 Refer to [*"Introducing Kafka to a Rails application"*](https://engineering.skroutz.gr/blog/kafka-rails-integration/)
-for more information.
+for more background and how rafka is used in a production environment.
 
 
 
@@ -55,9 +56,9 @@ Getting Started
    # macOS
    $ brew install librdkafka
    ```
-2. Install Rafka:
+2. Install rafka:
    ```shell
-   $ go get github.com/skroutz/rafka
+   $ go get -u github.com/skroutz/rafka
    ```
 3. Run it:
    ```shell
@@ -72,10 +73,10 @@ Design
 -------------------------------------------------------------------------------
 
 ### Protocol
-Rafka exposes a [Redis protocol](https://redis.io/topics/protocol) and tries to
-keep Redis semantics where possible.
+rafka exposes a subset of the [Redis protocol](https://redis.io/topics/protocol)
+and tries to keep Redis semantics where possible.
 
-We also try to design the protocol in a way that Rafka can be
+We also try to design the protocol in a way that rafka can be
 replaced by a plain Redis instance so that it's easier to test client code and
 libraries.
 
@@ -84,32 +85,52 @@ libraries.
 
 
 ### Consumer
-Kafka is designed in a way that each consumer represents a worker processing
-Kafka messages, that worker sends heartbeats and is depooled from its group
-when it misbehaves. Those semantics are preserved in `rafka` by using
-**stateful connections**. In `rafka` a connection is tied with a set of Kafka
-consumers.  Consumers are not shared between connections and, once the
-connection closes, the consumers are destroyed too.
+In Kafka, each consumer represents a worker processing messages. That worker
+sends heartbeats and is de-pooled from its group when it misbehaves.
 
-Each connection first needs to identify itself by using `client setname
-<group.id>:<name>` and then it can begin processing messages by issuing `blpop`
+Those semantics are preserved in rafka by using
+_stateful connections_. In rafka, each connection is tied with a set of Kafka
+consumers. Consumers are not shared between connections and once the
+connection closes, the respective consumers are gracefully shut down too.
+
+Each consumer must identify itself upon connection, by using `client setname
+<group.id>:<name>`. Then it can begin processing messages by issuing `blpop`
 calls on the desired topics. Each message should be explicitly acknowledged
 so it can be committed to Kafka. Acks are `rpush`ed to the special `acks` key.
 
 
 
+For more info refer to [API - Consumer](https://github.com/skroutz/rafka#consumer-1).
+
+#### Caveats
+
+rafka periodically calls [`Consumer.StoreOffsets()`](https://docs.confluent.io/current/clients/confluent-kafka-go/index.html#Consumer.StoreOffsets) under the hood. This means consumers must be
+configured accordingly:
+
+- `enable.auto.commit` must be set to `true`
+- `enable.auto.offset.store` [must](https://github.com/edenhill/librdkafka/blob/v0.11.4/src/rdkafka.h#L2665) be set to `false`
+
+For more info see https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md.
 
 ### Producer
 Each client connection is tied to a single Producer.
+
 Producers are not shared between connections and once the connection closes, its
-Producer is also destroyed.
+producer is also shutdown gracefully.
 
-Producers can immediately begin producing using `RPUSHX`, without having to call
-`CLIENT SETNAME` first.
+Producers produce messages using `RPUSHX`.
 
-Since the produced messages are buffered in Rafka and are eventually flushed
-to Kafka (eg. when the client connection is closed), `DUMP` can also be used to
-force a synchronous flush of the messages.
+Produced messages are buffered in rafka and are eventually flushed
+to Kafka. However, `DUMP` can be used to force a synchronous flush of any
+outstanding messages.
+
+
+For more info refer to [API - Producer](https://github.com/skroutz/rafka#producer-1).
+
+#### Caveats
+
+There is currently is an upper message limit of **32MB** to the messages that
+may be produced. It is controlled by `go-redisproto.MaxBulkSize`.
 
 
 
@@ -117,11 +138,14 @@ API
 ------------------------------------------------------------------------------
 
 ### Producer
-- `RPUSHX topics:<topic> <message>`: produce a message. The message will be assigned to a random partition.
-- `RPUSHX topics:<topic>:<key> <message>`: produce a message with a key. Two or more messages with the same key will always be assigned to the same partition.
-- `DUMP <timeoutMs>`: flushes the messages to Kafka. This is a blocking operation, it returns until all buffered messages are flushed or the timeout exceeds
+- `RPUSHX topics:<topic> <message>` produce a message
+- `RPUSHX topics:<topic>:<key> <message>` produce a message with a partition key.
+   Messages with the same key will always be assigned to the same partition.
+- `DUMP <timeoutMs>` flush any outstanding messages to Kafka. This is a
+   blocking operation; it returns until all buffered messages are flushed or
+   the timeoutMs exceeds
 
-Example using Redis:
+Example using redis-cli:
 ```
 127.0.0.1:6380> rpushx topics:greetings "hello there!"
 "OK"
@@ -132,12 +156,14 @@ Example using Redis:
 
 
 ### Consumer
-- `CLIENT SETNAME <group.id>:<name>`: sets the consumer's group & name
+- `CLIENT SETNAME <group.id>:<name>` sets the consumer group and name
 - `CLIENT GETNAME`
-- `BLPOP topics:<topic>:<JSON-encoded consumer config> <timeoutMs>`: consumes the next message from the given topic
-- `RPUSH acks <topic>:<partition>:<offset>`: commit the offset for the given topic/partition
+- `BLPOP topics:<topic>:<JSON-encoded consumer config> <timeoutMs>` consume
+   the next message from topic
+- `RPUSH acks <topic>:<partition>:<offset>` commit the offset for the given
+   topic/partition
 
-Example using Redis:
+Example using redis-cli:
 ```
 127.0.0.1:6380> client setname myapp:a-consumer
 "OK"
@@ -164,10 +190,10 @@ Example using Redis:
 
 - [`PING`](https://redis.io/commands/ping)
 - [`QUIT`](https://redis.io/commands/quit)
-- `HGETALL stats`: returns a hash with various statistics useful for
-  monitoring.
-- `KEYS topics:`: list all topics
-- `DEL stats`: resets the monitoring statistics.
+- `HGETALL stats` get monitoring statistics
+  monitoring
+- `KEYS topics:` list all topics
+- `DEL stats` reset the monitoring statistics
 
 
 
@@ -189,7 +215,7 @@ Development
 -------------------------------------------------------------------------------
 
 
-If this is your first time setting up development on Rafka, ensure that you
+If this is your first time setting up development on rafka, ensure that you
 have all the build dependencies via [dep](https://github.com/golang/dep):
 
 ```shell
@@ -223,5 +249,5 @@ $ make
 
 License
 -------------------------------------------------------------------------------
-Rafka is released under the GNU General Public License version 3. See [COPYING](COPYING).
+rafka is released under the GNU General Public License version 3. See [COPYING](COPYING).
 

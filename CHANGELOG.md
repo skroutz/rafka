@@ -10,6 +10,27 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 
 
+
+
+## 0.3.0 (2019-05-14)
+
+### Added
+
+- The server now logs errors during writing or flushing a response to the
+  client [[71aacf5](https://github.com/skroutz/rafka/commit/71aacf59b12d31d5beee905c26b6c1f6d3715a59)]
+
+
+### Changed
+
+- Incoming message size limit is bumped from 64kB to 32MB [[75fa7ef](https://github.com/skroutz/rafka/commit/75fa7ef023ec55d3c60b1e08e72f0afd127cd92a)]
+
+### Fixed
+
+- Properly return _all_ parse errors to clients [[db39b5f](https://github.com/skroutz/rafka/commit/db39b5f978e39e9bd91017cba94b312a8014dca6)]
+
+
+
+
 ## 0.2.0 (2018-10-01)
 
 ### Added

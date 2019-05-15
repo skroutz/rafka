@@ -51,6 +51,14 @@ type Server struct {
 }
 
 func NewServer(timeout time.Duration) *Server {
+	// The default is 64kB, however Kafka messages might typically be
+	// much larger than this, so we bump the limit to 32MB.
+	//
+	// Keep in mind that the Redis protocol specifies strings may be
+	// up to 512MB, although there are plans to make them even bigger
+	// (see https://github.com/antirez/redis/issues/757).
+	redisproto.MaxBulkSize = 32 * 1024 * 1000
+
 	return &Server{
 		timeout: timeout,
 		log:     log.New(os.Stderr, "[server] ", log.Ldate|log.Ltime),
@@ -69,16 +77,13 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
-	var writeErr error
+	var parseErr, writeErr error
+
 	for {
-		command, err := parser.ReadCommand()
-		if err != nil {
-			_, ok := err.(*redisproto.ProtocolError)
-			if ok {
-				writeErr = writer.WriteError(err.Error())
-			} else {
-				break
-			}
+		var command *redisproto.Command
+		command, parseErr = parser.ReadCommand()
+		if parseErr != nil {
+			writeErr = writer.WriteError(parseErr.Error())
 		} else {
 			cmd := strings.ToUpper(string(command.Get(0)))
 			switch cmd {
@@ -313,11 +318,16 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 				writeErr = writer.WriteError("Command not supported")
 			}
 		}
-		if command.IsLast() {
-			writer.Flush()
+		if parseErr != nil || command.IsLast() {
+			err := writer.Flush()
+			if err != nil {
+				s.log.Println("Error flushing response:", err)
+			}
 		}
-		if writeErr != nil {
-			// TODO(agis) log these errors
+		if parseErr != nil || writeErr != nil {
+			if writeErr != nil {
+				s.log.Println("Error writing response:", writeErr)
+			}
 			break
 		}
 	}
