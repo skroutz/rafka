@@ -319,15 +319,16 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 			}
 		}
 		if parseErr != nil || command.IsLast() {
-			err := writer.Flush()
-			if err != nil {
-				s.log.Println("Error flushing response:", err)
-			}
+			writer.Flush()
 		}
 		if parseErr != nil || writeErr != nil {
-			if writeErr != nil {
-				s.log.Println("Error writing response:", writeErr)
-			}
+			// parse errors are returned to the client and write
+			// errors are non-issues, since they just indicate
+			// the client closed the connection. That's why
+			// we don't log anything.
+			//
+			// Instead, we close the connection. Clients should
+			// establish the connections anew if needed.
 			break
 		}
 	}
