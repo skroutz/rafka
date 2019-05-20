@@ -121,7 +121,12 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 						writeErr = writer.WriteError("CONS Server shutdown")
 						break ConsLoop
 					case <-ticker.C:
-						writeErr = writer.WriteBulk(nil)
+						// WriteBulkStrings() is the only method
+						// that returns what the Redis Protocol
+						// calls a "null array" (i.e. "*-1\r\n")
+						//
+						// see https://github.com/secmask/go-redisproto/issues/4
+						writeErr = writer.WriteBulkStrings(nil)
 						break ConsLoop
 					default:
 						ev, err := cons.Poll(100)
