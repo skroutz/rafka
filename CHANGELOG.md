@@ -4,7 +4,18 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 ## master (unreleased)
 
+### Added
 
+- "Unsupported command" errors now contain the actual command that was
+  attempted by the client [[fa45217](https://github.com/skroutz/rafka/commit/fa45217c8c451591a009dc1398a6d0813916d5bb)]
+
+### Changed
+
+- If there are no messages to be consumed, BLPOP returns a "null array" instead
+  of a "null string", adhering to the Redis protocol. This is an internal change
+  that shouldn't affect clients [[adf3650](https://github.com/skroutz/rafka/commit/adf365095ee006a5a0fe31ea633c9038f5f2ec70)]
+
+- Connection write/flush errors are not logged anymore [[686af22](https://github.com/skroutz/rafka/commit/686af22073877159849d716659e6db2206962d8a)]
 
 
 
