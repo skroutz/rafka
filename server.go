@@ -311,7 +311,7 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 				case "GETNAME":
 					writeErr = writer.WriteBulkString(c.id)
 				default:
-					writeErr = writer.WriteError("CONS Command not supported")
+					writeErr = writer.WriteError("Command not supported: " + subcmd)
 				}
 			case "QUIT":
 				writer.WriteBulkString("OK")
@@ -320,7 +320,7 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 			case "PING":
 				writeErr = writer.WriteSimpleString("PONG")
 			default:
-				writeErr = writer.WriteError("Command not supported")
+				writeErr = writer.WriteError("Command not supported: " + cmd)
 			}
 		}
 		if parseErr != nil || command.IsLast() {
