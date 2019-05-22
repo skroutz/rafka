@@ -40,7 +40,7 @@ for more background and how rafka is used in a production environment.
 Requirements
 -------------------------------------------------------------------------------
 
-- [librdkafka 0.11.0 or later](https://github.com/edenhill/librdkafka)
+- [librdkafka](https://github.com/edenhill/librdkafka) 0.11.5 or later
 - A Kafka cluster
 
 
