@@ -129,6 +129,10 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 						writeErr = writer.WriteBulkStrings(nil)
 						break ConsLoop
 					default:
+						// we set a small timeout since
+						// Poll holds a lock that
+						// prevents the consumer to
+						// terminate until Poll returns
 						ev, err := cons.Poll(100)
 						if err != nil {
 							writeErr = writer.WriteError("CONS Poll " + err.Error())

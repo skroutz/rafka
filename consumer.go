@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 )
@@ -30,6 +31,9 @@ type Consumer struct {
 	topics   []string
 	cfg      rdkafka.ConfigMap
 	log      *log.Logger
+
+	mu         *sync.Mutex
+	terminated bool
 }
 
 type TopicPartition struct {
@@ -50,6 +54,7 @@ func NewConsumer(id string, topics []string, cfg rdkafka.ConfigMap) (*Consumer, 
 		topics: topics,
 		cfg:    cfg,
 		log:    log.New(os.Stderr, fmt.Sprintf("[consumer-%s] ", id), log.Ldate|log.Ltime),
+		mu:     new(sync.Mutex),
 	}
 
 	c.consumer, err = rdkafka.NewConsumer(&cfg)
@@ -74,6 +79,8 @@ func (c *Consumer) Run(ctx context.Context) {
 	// consume the whole topic
 	//
 	// TODO: remove the workaround once this is fixed
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	err := c.consumer.Unsubscribe()
 	if err != nil {
 		c.log.Printf("Error unsubscribing: %s", err)
@@ -96,10 +103,18 @@ func (c *Consumer) Run(ctx context.Context) {
 	if err != nil {
 		c.log.Printf("Error closing: %s", err)
 	}
+	c.terminated = true
 	c.log.Println("Bye")
 }
 
 func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.terminated {
+		return nil, nil
+	}
+
 	ev := c.consumer.Poll(timeoutMS)
 	if ev == nil {
 		return nil, nil
