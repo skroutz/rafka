@@ -4,6 +4,11 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 ## master (unreleased)
 
+### Fixed
+
+- With librdkafka 0.11.6 and 1.0.0, consumers could block indefinitely in BLPOP,
+  resulting in rafka being unable to shutdown [[#77](https://github.com/skroutz/rafka/pull/77)]
+
 ### Added
 
 - "Unsupported command" errors now contain the actual command that was
