@@ -121,9 +121,18 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 						writeErr = writer.WriteError("CONS Server shutdown")
 						break ConsLoop
 					case <-ticker.C:
-						writeErr = writer.WriteBulk(nil)
+						// WriteBulkStrings() is the only method
+						// that returns what the Redis Protocol
+						// calls a "null array" (i.e. "*-1\r\n")
+						//
+						// see https://github.com/secmask/go-redisproto/issues/4
+						writeErr = writer.WriteBulkStrings(nil)
 						break ConsLoop
 					default:
+						// we set a small timeout since
+						// Poll holds a lock that
+						// prevents the consumer to
+						// terminate until Poll returns
 						ev, err := cons.Poll(100)
 						if err != nil {
 							writeErr = writer.WriteError("CONS Poll " + err.Error())
@@ -306,7 +315,7 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 				case "GETNAME":
 					writeErr = writer.WriteBulkString(c.id)
 				default:
-					writeErr = writer.WriteError("CONS Command not supported")
+					writeErr = writer.WriteError("Command not supported: " + subcmd)
 				}
 			case "QUIT":
 				writer.WriteBulkString("OK")
@@ -315,19 +324,20 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 			case "PING":
 				writeErr = writer.WriteSimpleString("PONG")
 			default:
-				writeErr = writer.WriteError("Command not supported")
+				writeErr = writer.WriteError("Command not supported: " + cmd)
 			}
 		}
 		if parseErr != nil || command.IsLast() {
-			err := writer.Flush()
-			if err != nil {
-				s.log.Println("Error flushing response:", err)
-			}
+			writer.Flush()
 		}
 		if parseErr != nil || writeErr != nil {
-			if writeErr != nil {
-				s.log.Println("Error writing response:", writeErr)
-			}
+			// parse errors are returned to the client and write
+			// errors are non-issues, since they just indicate
+			// the client closed the connection. That's why
+			// we don't log anything.
+			//
+			// Instead, we close the connection. Clients should
+			// establish the connections anew if needed.
 			break
 		}
 	}

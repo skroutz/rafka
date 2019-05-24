@@ -456,8 +456,8 @@ class TestRafka < Minitest::Test
 end
 
 puts "\nRunning on #{host_port.join(":")} " \
-     "(rafka-rb #{Rafka::VERSION}, CONSUME_RETRIES=#{CONSUME_RETRIES}, " \
-     "CONSUME_TIMEOUT=#{CONSUME_TIMEOUT})..."
+     "(rafka-rb #{Rafka::VERSION}, redis-rb #{Redis::VERSION} " \
+     "CONSUME_RETRIES=#{CONSUME_RETRIES}, CONSUME_TIMEOUT=#{CONSUME_TIMEOUT})..."
 
 retries = 0
 rafka_up = false
