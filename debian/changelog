@@ -1,3 +1,12 @@
+rafka (0.4.0-1) stretch; urgency=medium
+
+  * Don't log connection write errors
+  * Respond with null array to consumers
+  * Expose the actual unsupported commands in errors
+  * cons: Don't execute Poll & shutdown concurrently
+
+ -- Agis Anastasopoulos <a@xz0.org>  Fri, 24 May 2019 10:32:46 +0300
+
 rafka (0.3.0-1) stretch; urgency=medium
 
   [ Agis Anastasopoulos ]
