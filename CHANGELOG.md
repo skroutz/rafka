@@ -4,6 +4,11 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 ## master (unreleased)
 
+### Changed
+
+- [BREAKING] Drop support for librdkafka 0.11.4 and before. librdkafka 0.11.5 or later
+  is now required [[#76](https://github.com/skroutz/rafka/pull/76))
+
 
 
 
