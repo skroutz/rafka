@@ -4,6 +4,13 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 ## master (unreleased)
 
+
+
+
+
+
+## 0.4.0 (2019-05-24)
+
 ### Fixed
 
 - With librdkafka 0.11.6 and 1.0.0, consumers could block indefinitely in BLPOP,
