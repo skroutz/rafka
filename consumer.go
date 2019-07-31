@@ -83,6 +83,17 @@ func (c *Consumer) Run(ctx context.Context) {
 	c.log.Println("Bye")
 }
 
+// filterOutInvalidOffsets filters out any Offsets of type OffsetInvalid from the given OffsetsCommitted argument.
+func filterOutInvalidOffsets(offsets rdkafka.OffsetsCommitted) rdkafka.OffsetsCommitted {
+	updatedParts := []rdkafka.TopicPartition{}
+	for _, part := range offsets.Offsets {
+		if part.Offset != rdkafka.OffsetInvalid {
+			updatedParts = append(updatedParts, part)
+		}
+	}
+	return rdkafka.OffsetsCommitted{offsets.Error, updatedParts}
+}
+
 func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -100,7 +111,7 @@ func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
 	case *rdkafka.Message:
 		return e, nil
 	case rdkafka.OffsetsCommitted:
-		c.log.Print(e)
+		c.log.Print(filterOutInvalidOffsets(e))
 	case rdkafka.Error:
 		// Treat errors with error code ErrTransport as transient And just log them.
 		// For now all other errors cause a failure.
