@@ -35,6 +35,11 @@ import (
 	redisproto "github.com/secmask/go-redisproto"
 )
 
+type monitorReply struct {
+	timestamp     int64
+	monitorString string
+}
+
 type Server struct {
 	log      *log.Logger
 	listener net.Listener
@@ -48,6 +53,12 @@ type Server struct {
 
 	// currently connected clients
 	clientByID sync.Map // map[string]*Client
+
+	// server's main monitor channel
+	srvMonitorChan chan monitorReply
+
+	// monitor channels of connected monitoring clients
+	monitorChans sync.Map // map[string](chan string)
 }
 
 func NewServer(timeout time.Duration) *Server {
@@ -60,8 +71,43 @@ func NewServer(timeout time.Duration) *Server {
 	redisproto.MaxBulkSize = 32 * 1024 * 1000
 
 	return &Server{
-		timeout: timeout,
-		log:     log.New(os.Stderr, "[server] ", log.Ldate|log.Ltime),
+		timeout:        timeout,
+		log:            log.New(os.Stderr, "[server] ", log.Ldate|log.Ltime),
+		srvMonitorChan: make(chan monitorReply, 1000),
+	}
+}
+
+// formatMonitorCommand simply wraps the Redis command and its arguments into double quotes.
+func formatMonitorCommand(cmd *redisproto.Command) string {
+	commandStr := fmt.Sprintf("\"%s\"", string(cmd.Get(0)))
+	for i := 1; i < cmd.ArgCount(); i++ {
+		commandStr += fmt.Sprintf(" \"%s\"", string(cmd.Get(i)))
+	}
+	return commandStr
+}
+
+// monitorHandler outputs every command processed by Rafka server to the monitor channels of the
+// connected monitoring clients.
+func (s *Server) monitorHandler() {
+	for monReply := range s.srvMonitorChan {
+		s.monitorChans.Range(func(id, channel interface{}) bool {
+			clientMonitorChan, ok := channel.(chan string)
+			if !ok {
+				s.log.Printf("Couldn't cast %#v to chan string", channel)
+				return false
+			}
+
+			select {
+			case clientMonitorChan <- fmt.Sprintf("%.6f [0 %s] %s",
+				float64(monReply.timestamp)/1e+9,
+				id,
+				monReply.monitorString):
+			default:
+				s.log.Printf("Failed to write monitor string to client '%s'\n", id)
+			}
+
+			return true
+		})
 	}
 }
 
@@ -72,12 +118,14 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 	s.clientByID.Store(c.id, c)
 	defer func() {
 		s.clientByID.Delete(c.id)
+		s.monitorChans.Delete(c.id)
 	}()
 
 	parser := redisproto.NewParser(conn)
 	writer := redisproto.NewWriter(bufio.NewWriter(conn))
 
 	var parseErr, writeErr error
+	var monitorStrCommand string
 
 	for {
 		var command *redisproto.Command
@@ -85,6 +133,16 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 		if parseErr != nil {
 			writeErr = writer.WriteError(parseErr.Error())
 		} else {
+			monitorStrCommand = formatMonitorCommand(command)
+			select {
+			case s.srvMonitorChan <- monitorReply{
+				timestamp:     time.Now().UnixNano(),
+				monitorString: monitorStrCommand,
+			}:
+			default:
+				s.log.Printf("Could not write redis Command to channel: '%s'\n", monitorStrCommand)
+			}
+
 			cmd := strings.ToUpper(string(command.Get(0)))
 			switch cmd {
 			// Consume the next message from one or more topics
@@ -323,6 +381,18 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 				return
 			case "PING":
 				writeErr = writer.WriteSimpleString("PONG")
+			// Stream back every command processed by the Rafka server.
+			//
+			// MONITOR
+			case "MONITOR":
+				argCnt := command.ArgCount()
+				if argCnt > 1 {
+					writeErr = writer.WriteError("ERR command 'monitor' does not accept any extra arguments")
+					break
+				}
+				s.monitorChans.Store(c.id, c.monitorChan)
+				s.log.Printf("New monitor client: %s (active monitors: %d)\n", c.id, s.activeMonitors())
+				writer.WriteSimpleString("OK")
 			default:
 				writeErr = writer.WriteError("Command not supported: " + cmd)
 			}
@@ -362,6 +432,12 @@ func (s *Server) ListenAndServe(ctx context.Context, hostport string) error {
 		return err
 	}
 	s.log.Print("Listening on " + hostport)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.monitorHandler()
+	}()
 
 	wg.Add(1)
 	go func() {
@@ -448,6 +524,9 @@ func (s *Server) shutdown() {
 		c.conn.Close()
 		return true
 	})
+
+	// ensure that the server's monitoring channel is closed
+	close(s.srvMonitorChan)
 }
 
 // parseTopicsAndConfig parses the "topics:topic1,topic2:{config}" into
@@ -510,4 +589,22 @@ func msgToRedis(msg *rdkafka.Message) []interface{} {
 		int64(tp.Offset),
 		"value",
 		msg.Value}
+}
+
+// activeMonitors returns the connected monitoring client count.
+func (s *Server) activeMonitors() int {
+	monitorCnt := 0
+
+	s.monitorChans.Range(func(id, channel interface{}) bool {
+		_, ok := channel.(chan string)
+		if !ok {
+			s.log.Printf("Couldn't cast %#v to chan string", channel)
+			return false
+		}
+
+		monitorCnt += 1
+		return true
+	})
+
+	return monitorCnt
 }

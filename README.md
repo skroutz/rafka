@@ -163,6 +163,7 @@ Example using redis-cli:
 
 - [`PING`](https://redis.io/commands/ping)
 - [`QUIT`](https://redis.io/commands/quit)
+- [`MONITOR`](https://redis.io/commands/monitor)
 - `HGETALL stats` get monitoring statistics monitoring
 - `KEYS topics:` list all topics
 - `DEL stats` reset the monitoring statistics
