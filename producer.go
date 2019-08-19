@@ -61,6 +61,10 @@ func (p *Producer) Produce(msg *rdkafka.Message) error {
 		p.log.Printf("Started working...")
 	}
 
+	if *msg.TopicPartition.Topic == "scrooge.model-updates" {
+		p.log.Printf("%s\n", string(msg.Value))
+	}
+
 	return p.rdProd.Produce(msg, nil)
 }
 
