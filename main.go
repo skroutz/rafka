@@ -1,6 +1,6 @@
 // Rafka: Kafka exposed with a Redis API
 //
-// Copyright 2017 Skroutz S.A.
+// Copyright 2017-2019 Skroutz S.A.
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const Version = "0.4.0"
+const Version = "0.5.0"
 
 var (
 	cfg      Config

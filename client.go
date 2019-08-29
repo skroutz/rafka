@@ -1,4 +1,4 @@
-// Copyright 2017 Skroutz S.A.
+// Copyright 2017-2019 Skroutz S.A.
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"log"
@@ -23,12 +24,14 @@ import (
 	"strings"
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
+	redisproto "github.com/secmask/go-redisproto"
 )
 
 type Client struct {
-	id   string
-	conn net.Conn
-	log  *log.Logger
+	id          string
+	conn        net.Conn
+	log         *log.Logger
+	monitorChan chan string
 
 	consManager *ConsumerManager
 	consGID     string
@@ -44,13 +47,27 @@ type Client struct {
 func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
 	id := conn.RemoteAddr().String()
 
-	return &Client{
+	client := &Client{
 		id:          id,
+		monitorChan: make(chan string, 1000),
 		conn:        conn,
 		log:         log.New(os.Stderr, fmt.Sprintf("[client-%s] ", id), log.Ldate|log.Ltime),
 		consManager: cm,
 		consumers:   make(map[ConsumerID]bool),
 		consByTopic: make(map[string]ConsumerID),
+	}
+
+	go client.monitorWriter()
+
+	return client
+}
+
+// monitorWriter streams any monitor strings written to the client's monitor channel.
+func (c *Client) monitorWriter() {
+	writer := redisproto.NewWriter(bufio.NewWriter(c.conn))
+	for monitorOutput := range c.monitorChan {
+		writer.WriteSimpleString(monitorOutput)
+		writer.Flush()
 	}
 }
 
@@ -156,5 +173,6 @@ func (c *Client) Close() {
 		c.producer.Close()
 	}
 
+	close(c.monitorChan)
 	c.conn.Close()
 }

@@ -1,4 +1,4 @@
-// Copyright 2017 Skroutz S.A.
+// Copyright 2017-2019 Skroutz S.A.
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -71,40 +71,27 @@ func (c *Consumer) Run(ctx context.Context) {
 	c.log.Printf("Started working (%v)...", c.cfg)
 	<-ctx.Done()
 
-	// need to drain the consumer queue by calling Poll() until nil is returned
-	// to be sure the following Close() will return
-	// https://github.com/confluentinc/confluent-kafka-go/issues/189#issuecomment-392726037
-	//
-	// Unsubscribe before the Poll() loop, otherwise Poll() will potentially
-	// consume the whole topic
-	//
-	// TODO: remove the workaround once this is fixed
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	err := c.consumer.Unsubscribe()
-	if err != nil {
-		c.log.Printf("Error unsubscribing: %s", err)
-	}
-
-	for {
-		ev := c.consumer.Poll(0)
-		if ev == nil {
-			break
-		} else {
-			if e, ok := ev.(*rdkafka.Message); ok {
-				c.log.Print("Unexpected message when draining consumer:", *e)
-			}
-		}
-	}
-
-	// closing will also trigger a commit if auto commit is enabled
+	// Close() will also trigger a commit since enable.auto.commit is true
 	// so we don't need to commit explicitly
-	err = c.consumer.Close()
+	err := c.consumer.Close()
 	if err != nil {
 		c.log.Printf("Error closing: %s", err)
 	}
 	c.terminated = true
 	c.log.Println("Bye")
+}
+
+// filterOutInvalidOffsets filters out any Offsets of type OffsetInvalid from the given OffsetsCommitted argument.
+func filterOutInvalidOffsets(offsets rdkafka.OffsetsCommitted) rdkafka.OffsetsCommitted {
+	updatedParts := []rdkafka.TopicPartition{}
+	for _, part := range offsets.Offsets {
+		if part.Offset != rdkafka.OffsetInvalid {
+			updatedParts = append(updatedParts, part)
+		}
+	}
+	return rdkafka.OffsetsCommitted{offsets.Error, updatedParts}
 }
 
 func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
@@ -124,7 +111,7 @@ func (c *Consumer) Poll(timeoutMS int) (*rdkafka.Message, error) {
 	case *rdkafka.Message:
 		return e, nil
 	case rdkafka.OffsetsCommitted:
-		c.log.Print(e)
+		c.log.Print(filterOutInvalidOffsets(e))
 	case rdkafka.Error:
 		// Treat errors with error code ErrTransport as transient And just log them.
 		// For now all other errors cause a failure.
