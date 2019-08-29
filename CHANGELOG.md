@@ -2,17 +2,23 @@
 
 Breaking changes are prefixed with a "[BREAKING]" label.
 
+
 ## master (unreleased)
+
+
+## 0.5.0 (2019-08-29)
+
+### Added
+
+- Add support for the MONITOR command [[#80](https://github.com/skroutz/rafka/pull/80)]
 
 ### Changed
 
 - [BREAKING] Drop support for librdkafka 0.11.4 and before. librdkafka 0.11.5 or later
   is now required [[#76](https://github.com/skroutz/rafka/pull/76)]
 
-
-
-
-
+- The consumer will now strip "unset" offsets (aka those of `OffsetInvalid` type) from the logging
+  output [[#79](https://github.com/skroutz/rafka/pull/79)]
 
 ## 0.4.0 (2019-05-24)
 
@@ -35,18 +41,12 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 - Connection write/flush errors are not logged anymore [[686af22](https://github.com/skroutz/rafka/commit/686af22073877159849d716659e6db2206962d8a)]
 
 
-
-
-
-
-
 ## 0.3.0 (2019-05-14)
 
 ### Added
 
 - The server now logs errors during writing or flushing a response to the
   client [[71aacf5](https://github.com/skroutz/rafka/commit/71aacf59b12d31d5beee905c26b6c1f6d3715a59)]
-
 
 ### Changed
 
@@ -55,8 +55,6 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 ### Fixed
 
 - Properly return _all_ parse errors to clients [[db39b5f](https://github.com/skroutz/rafka/commit/db39b5f978e39e9bd91017cba94b312a8014dca6)]
-
-
 
 
 ## 0.2.0 (2018-10-01)
@@ -71,24 +69,15 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 - Shutdown process is more robust with less downtime for producers [[#68](https://github.com/skroutz/rafka/pull/68)]
 
 
-
-
-
-
-
 ## 0.1.0 (2018-09-24)
 
 ### Fixed
 
 - Ignore non-critical "Poll GroupCoordinator" errors [[#69](https://github.com/skroutz/rafka/pull/69)]
 
-
 ### Changed
 
 - [BREAKING] `--kafka/-k` flag is renamed to `--config/-c` [[9be4ea8](https://github.com/skroutz/rafka/commit/9be4ea84d2e7ddf8b33d90e0f6489dd07335dfef)]
-
-
-
 
 
 ## 0.0.16 (2018-06-07)
@@ -99,20 +88,9 @@ Breaking changes are prefixed with a "[BREAKING]" label.
   clients contained numeric values [[118c36a](https://github.com/skroutz/rafka/commit/118c36af1969b1df81ce0d29f1a36696f94e8a2a)]
 
 
-
-
-
-
-
-
-
 ## 0.0.15 (2018-06-05)
 
 This is a maintenance release with no changes.
-
-
-
-
 
 
 ## 0.0.14 (2018-06-05)
@@ -126,14 +104,6 @@ This is a maintenance release with no changes.
 - Consumer could hang indefinitely when closing [[#59](https://github.com/skroutz/rafka/issues/59)]
 
 
-
-
-
-
-
-
-
-
 ## 0.0.13 (2018-06-05)
 
 ### Added
@@ -141,24 +111,11 @@ This is a maintenance release with no changes.
 - Offset commit results are now visible in the logs [[c73dae](https://github.com/skroutz/rafka/commit/c73dae044be7903d6b11109cc5cc366d61d98228)]
 
 
-
-
-
-
 ## 0.0.12 (2018-05-22)
 
 ### Changed
 
 - Use librdkafka auto commit and offset store functionality
-
-
-
-
-
-
-
-
-
 
 
 ## 0.0.11 (2018-05-18)
