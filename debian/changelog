@@ -1,3 +1,13 @@
+rafka (0.5.0-1) stretch; urgency=medium
+
+  * New upstream release
+
+  * d/watch: Add an empty watch file to appease lintian
+  * d/changelog: fix badly formatted line
+  * d/control: extend Uploaders list
+
+ -- Dimitris Bliamplias <bl.dimitris@gmail.com>  Thu, 29 Aug 2019 14:27:21 +0300
+
 rafka (0.4.0-1) stretch; urgency=medium
 
   * Don't log connection write errors
