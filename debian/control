@@ -2,7 +2,8 @@ Source: rafka
 Section: misc
 Priority: extra
 Maintainer: Mpampis Kostas <charkost.rb@gmail.com>
-Uploaders: Aggelos Avgerinos <evaggelos.avgerinos@gmail.com>
+Uploaders: Aggelos Avgerinos <evaggelos.avgerinos@gmail.com>,
+           Dimitris Bliamplias <bl.dimitris@gmail.com>
 Build-Depends: debhelper (>= 10),
                dh-golang,
                dh-exec,
