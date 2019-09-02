@@ -6,3 +6,6 @@ override_dh_auto_test:
 
 %:
 	dh $@ --buildsystem=golang --with=golang
+
+override_dh_dwz:
+	# pass
