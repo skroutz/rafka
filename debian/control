@@ -1,6 +1,6 @@
 Source: rafka
 Section: misc
-Priority: extra
+Priority: optional
 Maintainer: Mpampis Kostas <charkost.rb@gmail.com>
 Uploaders: Aggelos Avgerinos <evaggelos.avgerinos@gmail.com>,
            Dimitris Bliamplias <bl.dimitris@gmail.com>
@@ -11,7 +11,7 @@ Build-Depends: debhelper (>= 10),
                golang-github-confluentinc-confluent-kafka-go-dev (>> 0.11.0+git20170826.15.9fa7efc-1~),
                golang-github-secmask-go-redisproto-dev,
                golang-github-urfave-cli-dev,
-Standards-Version: 3.9.8
+Standards-Version: 4.3.0
 Homepage: https://github.com/skroutz/rafka
 Vcs-Browser: https://github.com/skroutz/rafka
 Vcs-Git: https://github.com/skroutz/rafka -b debian/stretch
