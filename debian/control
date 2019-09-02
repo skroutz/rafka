@@ -14,7 +14,7 @@ Build-Depends: debhelper-compat (= 12),
 Standards-Version: 4.3.0
 Homepage: https://github.com/skroutz/rafka
 Vcs-Browser: https://github.com/skroutz/rafka
-Vcs-Git: https://github.com/skroutz/rafka -b debian/stretch
+Vcs-Git: https://github.com/skroutz/rafka -b debian/buster
 XS-Go-Import-Path: github.com/skroutz/rafka
 
 Package: rafka
