@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Mpampis Kostas <charkost.rb@gmail.com>
 Uploaders: Aggelos Avgerinos <evaggelos.avgerinos@gmail.com>,
            Dimitris Bliamplias <bl.dimitris@gmail.com>
-Build-Depends: debhelper (>= 10),
+Build-Depends: debhelper-compat (= 12),
                dh-golang,
                dh-exec,
                golang-any (>= 1.9),
