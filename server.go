@@ -275,7 +275,7 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 					break
 				}
 
-				cons, err := c.ConsumerByTopic(topic)
+				cons, err := c.fetchConsumer()
 				if err != nil {
 					writeErr = writer.WriteError("CONS " + err.Error())
 					break
@@ -490,7 +490,7 @@ func (s *Server) shutdown() {
 			return false
 		}
 
-		if len(c.consumers) > 0 {
+		if c.consID != "" {
 			// This ugliness is due to the go-redisproto parser's
 			// not having a selectable channel for reading input.
 			// We're stuck with blocking on ReadCommand() and

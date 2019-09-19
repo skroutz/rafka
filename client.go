@@ -34,10 +34,9 @@ type Client struct {
 	monitorChan chan string
 
 	consManager *ConsumerManager
+	consID      ConsumerID
 	consGID     string
 	consReady   bool
-	consByTopic map[string]ConsumerID
-	consumers   map[ConsumerID]bool
 
 	producer *Producer
 }
@@ -53,8 +52,6 @@ func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
 		conn:        conn,
 		log:         log.New(os.Stderr, fmt.Sprintf("[client-%s] ", id), log.Ldate|log.Ltime),
 		consManager: cm,
-		consumers:   make(map[ConsumerID]bool),
-		consByTopic: make(map[string]ConsumerID),
 	}
 
 	go client.monitorWriter()
@@ -104,29 +101,24 @@ func (c *Client) Consumer(topics []string, cfg rdkafka.ConfigMap) (*Consumer, er
 	// topic
 	cid := ConsumerID(fmt.Sprintf("%s|%s", c.id, strings.Join(topics, ",")))
 
-	for _, topic := range topics {
-		if existingID, ok := c.consByTopic[topic]; ok {
-			if existingID != cid {
-				return nil, fmt.Errorf("Topic %s has another consumer", topic)
-			}
-		}
+	if c.consID == "" {
+		c.consID = cid
 	}
 
-	c.consumers[cid] = true
-	for _, topic := range topics {
-		c.consByTopic[topic] = cid
+	if cid != c.consID {
+		return nil, fmt.Errorf("Client '%s' has already Consumer '%s' registered.", c.id, c.consID)
 	}
 
 	return c.consManager.GetOrCreate(cid, c.consGID, topics, cfg)
 }
 
-func (c *Client) ConsumerByTopic(topic string) (*Consumer, error) {
-	consumerID, ok := c.consByTopic[topic]
-	if !ok {
-		return nil, fmt.Errorf("No consumer for topic %s", topic)
+// fetchConsumer returns the registered Consumer for the current Client.
+func (c *Client) fetchConsumer() (*Consumer, error) {
+	if c.consID == "" {
+		return nil, errors.New("No consumer is registered for Client " + c.id)
 	}
 
-	consumer, err := c.consManager.ByID(consumerID)
+	consumer, err := c.consManager.ByID(c.consID)
 	if err != nil {
 		return nil, err
 	}
@@ -164,10 +156,7 @@ func (c *Client) Producer(cfg rdkafka.ConfigMap) (*Producer, error) {
 // Close closes producers, consumers and the connection of c.
 // Calling Close on an already closed client will result in a panic.
 func (c *Client) Close() {
-	for cid := range c.consumers {
-		// TODO(agis): make this blocking
-		c.consManager.ShutdownConsumer(cid)
-	}
+	c.consManager.ShutdownConsumer(c.consID)
 
 	if c.producer != nil {
 		c.producer.Close()
