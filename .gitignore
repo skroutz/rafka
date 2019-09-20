@@ -5,3 +5,4 @@ librdkafka.json
 rafka
 test/.bundle
 vendor
+*.swp
