@@ -16,6 +16,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -30,28 +31,30 @@ import (
 type Client struct {
 	id          string
 	conn        net.Conn
+	cfg         Config
+	ctx         context.Context
 	log         *log.Logger
 	monitorChan chan string
 
-	consManager *ConsumerManager
-	consID      ConsumerID
-	consGID     string
-	consReady   bool
+	consGID   string
+	consReady bool
 
+	consumer *Consumer
 	producer *Producer
 }
 
 // NewClient returns a new client. After it's no longer needed, the client
 // should be closed with Close().
-func NewClient(conn net.Conn, cm *ConsumerManager) *Client {
+func NewClient(ctx context.Context, conn net.Conn, cfg Config) *Client {
 	id := conn.RemoteAddr().String()
 
 	client := &Client{
 		id:          id,
 		monitorChan: make(chan string, 1000),
 		conn:        conn,
+		cfg:         cfg,
+		ctx:         ctx,
 		log:         log.New(os.Stderr, fmt.Sprintf("[client-%s] ", id), log.Ldate|log.Ltime),
-		consManager: cm,
 	}
 
 	go client.monitorWriter()
@@ -91,39 +94,74 @@ func (c *Client) String() string {
 	return c.id
 }
 
+// registerConsumer registers a new Consumer denoted by cid.
+func (c *Client) registerConsumer(
+	cid ConsumerID, gid string, topics []string, cfg rdkafka.ConfigMap) (*Consumer, error) {
+
+	if gid == "" {
+		return nil, errors.New("Failed to register Consumer (attr: `group.id` is missing)")
+	}
+
+	// apparently, reusing the same config between consumers silently makes them non-operational
+	kafkaCfg := rdkafka.ConfigMap{}
+	for k, v := range c.cfg.Librdkafka.Consumer {
+		err := kafkaCfg.SetKey(k, v)
+		if err != nil {
+			return nil, err
+		}
+	}
+	for k, v := range cfg {
+		err := kafkaCfg.SetKey(k, v)
+		if err != nil {
+			return nil, err
+		}
+	}
+	err := kafkaCfg.SetKey("group.id", gid)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract the consumer name from the client id.
+	// We know by client.Consumer() that cid is in the form of `<group:name>|<topics>`
+	cidNoTopics := strings.Split(strings.Split(string(cid), "|")[0], ":")[1]
+	err = kafkaCfg.SetKey("client.id", cidNoTopics)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, consumerCancel := context.WithCancel(c.ctx)
+	cons, err := NewConsumer(cid, topics, kafkaCfg)
+	if err != nil {
+		return nil, err
+	}
+	cons.cancel = consumerCancel
+
+	go cons.Run(ctx)
+
+	return cons, nil
+}
+
+// Consumer method will either create a new consumer via the registerConsumer method, or it will
+// simple return the already registered Consumer for the current Client.
 func (c *Client) Consumer(topics []string, cfg rdkafka.ConfigMap) (*Consumer, error) {
 	if !c.consReady {
 		return nil, errors.New("Connection not ready. Identify yourself using `CLIENT SETNAME` first")
 	}
 
-	// we include the topics in the consumer's id so that GetOrCreate()
-	// creates a new consumer if the client issues a BLPOP for a different
-	// topic
 	cid := ConsumerID(fmt.Sprintf("%s|%s", c.id, strings.Join(topics, ",")))
 
-	if c.consID == "" {
-		c.consID = cid
+	if c.consumer == nil {
+		cons, err := c.registerConsumer(cid, c.consGID, topics, cfg)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to register Consumer '%s' for Client '%s'", cid, c.id)
+		}
+		c.consumer = cons
+	} else if cid != c.consumer.id {
+		return nil, fmt.Errorf("Client '%s' has Consumer '%s' registered (new consID: '%s')", c.id,
+			c.consumer.id, cid)
 	}
 
-	if cid != c.consID {
-		return nil, fmt.Errorf("Client '%s' has already Consumer '%s' registered.", c.id, c.consID)
-	}
-
-	return c.consManager.GetOrCreate(cid, c.consGID, topics, cfg)
-}
-
-// fetchConsumer returns the registered Consumer for the current Client.
-func (c *Client) fetchConsumer() (*Consumer, error) {
-	if c.consID == "" {
-		return nil, errors.New("No consumer is registered for Client " + c.id)
-	}
-
-	consumer, err := c.consManager.ByID(c.consID)
-	if err != nil {
-		return nil, err
-	}
-
-	return consumer, nil
+	return c.consumer, nil
 }
 
 // Producer returns c's producer. If c does not have a producer assigned yet,
@@ -156,7 +194,9 @@ func (c *Client) Producer(cfg rdkafka.ConfigMap) (*Producer, error) {
 // Close closes producers, consumers and the connection of c.
 // Calling Close on an already closed client will result in a panic.
 func (c *Client) Close() {
-	c.consManager.ShutdownConsumer(c.consID)
+	if c.consumer != nil {
+		c.consumer.cancel()
+	}
 
 	if c.producer != nil {
 		c.producer.Close()

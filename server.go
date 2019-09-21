@@ -44,10 +44,6 @@ type Server struct {
 	log      *log.Logger
 	listener net.Listener
 
-	manager       *ConsumerManager
-	managerCancel func()
-	managerWg     sync.WaitGroup
-
 	// default timeout for consumer poll
 	timeout time.Duration
 
@@ -112,7 +108,7 @@ func (s *Server) monitorHandler() {
 }
 
 func (s *Server) Handle(ctx context.Context, conn net.Conn) {
-	c := NewClient(conn, s.manager)
+	c := NewClient(ctx, conn, cfg)
 	defer c.Close()
 
 	s.clientByID.Store(c.id, c)
@@ -275,13 +271,12 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 					break
 				}
 
-				cons, err := c.fetchConsumer()
-				if err != nil {
-					writeErr = writer.WriteError("CONS " + err.Error())
+				if c.consumer == nil {
+					writeErr = writer.WriteError("CONS No consumer registered for Client " + c.id)
 					break
 				}
 
-				err = cons.SetOffset(topic, partition, offset+1)
+				err = c.consumer.SetOffset(topic, partition, offset+1)
 				if err != nil {
 					writeErr = writer.WriteError("CONS " + err.Error())
 					break
@@ -417,16 +412,6 @@ func (s *Server) ListenAndServe(ctx context.Context, hostport string) error {
 	var wg, inflightWg sync.WaitGroup
 	var err error
 
-	managerCtx, managerCancel := context.WithCancel(ctx)
-	s.manager = NewConsumerManager(managerCtx, cfg)
-	s.managerCancel = managerCancel
-
-	s.managerWg.Add(1)
-	go func() {
-		defer s.managerWg.Done()
-		s.manager.Run()
-	}()
-
 	s.listener, err = net.Listen("tcp", hostport)
 	if err != nil {
 		return err
@@ -477,9 +462,6 @@ Loop:
 // shutdown closes current clients and also stops accepting new clients in a
 // non-blocking manner
 func (s *Server) shutdown() {
-	s.manager.StopAcceptingConsumers()
-	s.managerCancel()
-
 	// Close clients with at least 1 consumer. These clients may have
 	// producers too, but we assume that they are non-critical so we close
 	// them at this point too, which is earlier than the others (see below).
@@ -490,7 +472,7 @@ func (s *Server) shutdown() {
 			return false
 		}
 
-		if c.consID != "" {
+		if c.consumer != nil {
 			// This ugliness is due to the go-redisproto parser's
 			// not having a selectable channel for reading input.
 			// We're stuck with blocking on ReadCommand() and
@@ -500,9 +482,6 @@ func (s *Server) shutdown() {
 
 		return true
 	})
-
-	// wait for consumers to actually close
-	s.managerWg.Wait()
 
 	// stop accepting new clients and unblock Accept()
 	err := s.listener.Close()

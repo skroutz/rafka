@@ -32,6 +32,7 @@ type Consumer struct {
 	consumer *rdkafka.Consumer
 	topics   []string
 	cfg      rdkafka.ConfigMap
+	cancel   context.CancelFunc
 	log      *log.Logger
 
 	mu         *sync.Mutex
