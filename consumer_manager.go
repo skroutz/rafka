@@ -25,8 +25,6 @@ import (
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-type ConsumerID string
-
 type consumerPool map[ConsumerID]*consumerPoolEntry
 
 type consumerPoolEntry struct {
@@ -110,7 +108,7 @@ func (m *ConsumerManager) GetOrCreate(cid ConsumerID, gid string, topics []strin
 			return nil, err
 		}
 
-		c, err := NewConsumer(string(cid), topics, kafkaCfg)
+		c, err := NewConsumer(cid, topics, kafkaCfg)
 		if err != nil {
 			return nil, err
 		}

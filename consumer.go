@@ -25,8 +25,10 @@ import (
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
+type ConsumerID string
+
 type Consumer struct {
-	id       string
+	id       ConsumerID
 	consumer *rdkafka.Consumer
 	topics   []string
 	cfg      rdkafka.ConfigMap
@@ -46,7 +48,7 @@ type OffsetEntry struct {
 	offset rdkafka.Offset
 }
 
-func NewConsumer(id string, topics []string, cfg rdkafka.ConfigMap) (*Consumer, error) {
+func NewConsumer(id ConsumerID, topics []string, cfg rdkafka.ConfigMap) (*Consumer, error) {
 	var err error
 
 	c := Consumer{
