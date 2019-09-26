@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	redisproto "github.com/secmask/go-redisproto"
@@ -38,6 +39,8 @@ type Client struct {
 
 	consGID   string
 	consReady bool
+
+	consWg *sync.WaitGroup
 
 	consumer *Consumer
 	producer *Producer
@@ -136,7 +139,11 @@ func (c *Client) registerConsumer(
 	}
 	cons.cancel = consumerCancel
 
-	go cons.Run(ctx)
+	c.consWg.Add(1)
+	go func(ctx context.Context) {
+		defer c.consWg.Done()
+		cons.Run(ctx)
+	}(ctx)
 
 	return cons, nil
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Skroutz S.A.
+// Copyright (C) 2017-2019 Skroutz S.A.
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -49,6 +49,9 @@ type Server struct {
 
 	// currently connected clients
 	clientByID sync.Map // map[string]*Client
+
+	// wait group to manage the active consumers
+	consumersWg sync.WaitGroup
 
 	// server's main monitor channel
 	srvMonitorChan chan monitorReply
@@ -109,6 +112,7 @@ func (s *Server) monitorHandler() {
 
 func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 	c := NewClient(ctx, conn, cfg)
+	c.consWg = &s.consumersWg
 	defer c.Close()
 
 	s.clientByID.Store(c.id, c)
@@ -482,6 +486,9 @@ func (s *Server) shutdown() {
 
 		return true
 	})
+
+	// wait for consumers to actually close
+	s.consumersWg.Wait()
 
 	// stop accepting new clients and unblock Accept()
 	err := s.listener.Close()
