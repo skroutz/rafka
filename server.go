@@ -58,6 +58,10 @@ type Server struct {
 
 	// monitor channels of connected monitoring clients
 	monitorChans sync.Map // map[string](chan string)
+
+	// boolean flag denoting whether a server shutdown is in-progress
+	teardown     bool
+	teardownLock sync.RWMutex
 }
 
 func NewServer(timeout time.Duration) *Server {
@@ -73,6 +77,7 @@ func NewServer(timeout time.Duration) *Server {
 		timeout:        timeout,
 		log:            log.New(os.Stderr, "[server] ", log.Ldate|log.Ltime),
 		srvMonitorChan: make(chan monitorReply, 1000),
+		teardown:       false,
 	}
 }
 
@@ -155,11 +160,25 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 					writeErr = writer.WriteError("CONS " + err.Error())
 					break
 				}
+
+				// We need to hold the teardownLock in read-mode, while we're registering a new
+				// Consumer. This way we ensure that no Consumer will be registered **after** a
+				// server shutdown signal is handled.
+				s.teardownLock.RLock()
+				if s.teardown {
+					// server shutdown, release the read-lock and return
+					writeErr = writer.WriteError("CONS Server shutdown")
+					s.teardownLock.RUnlock()
+					break
+				}
+
 				cons, err := c.Consumer(topics, cfg)
 				if err != nil {
 					writeErr = writer.WriteError("CONS " + err.Error())
+					s.teardownLock.RUnlock()
 					break
 				}
+				s.teardownLock.RUnlock()
 
 				// Setup timeout: Check the last argument for
 				// an int or use the default.
@@ -466,6 +485,11 @@ Loop:
 // shutdown closes current clients and also stops accepting new clients in a
 // non-blocking manner
 func (s *Server) shutdown() {
+	// Stop accepting new consumers while a server shutdown operation is in-progress.
+	s.teardownLock.Lock()
+	s.teardown = true
+	s.teardownLock.Unlock()
+
 	// Close clients with at least 1 consumer. These clients may have
 	// producers too, but we assume that they are non-critical so we close
 	// them at this point too, which is earlier than the others (see below).
