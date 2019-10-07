@@ -5,6 +5,24 @@ rafka
 [![Go report](https://goreportcard.com/badge/github.com/skroutz/rafka)](https://goreportcard.com/report/github.com/skroutz/rafka)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
+#### Table of Contents
+
+- [Rationale](#rationale)
+- [Requirements](#requirements)
+- [Getting Started](#getting-started)
+- [Design](#design)
+    - [Protocol](#protocol)
+    - [Consumer](#consumer)
+    - [Producer](#producer)
+- [API](#api)
+    - [Protocol](#protocol)
+    - [Consumer](#consumer)
+    - [Generic](#generic)
+- [Client libraries](#client-libraries)
+- [Development](#development)
+- [License](#license)
+
+
 rafka is a gateway service that exposes Kafka using simple semantics.
 
 It implements a small subset of the [Redis protocol](https://redis.io/topics/protocol), so that it
