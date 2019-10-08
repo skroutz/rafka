@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Skroutz S.A.
+// Copyright (C) 2017-2019 Skroutz S.A.
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -44,21 +44,24 @@ type Server struct {
 	log      *log.Logger
 	listener net.Listener
 
-	manager       *ConsumerManager
-	managerCancel func()
-	managerWg     sync.WaitGroup
-
 	// default timeout for consumer poll
 	timeout time.Duration
 
 	// currently connected clients
 	clientByID sync.Map // map[string]*Client
 
+	// wait group to manage the active consumers
+	consumersWg sync.WaitGroup
+
 	// server's main monitor channel
 	srvMonitorChan chan monitorReply
 
 	// monitor channels of connected monitoring clients
 	monitorChans sync.Map // map[string](chan string)
+
+	// boolean flag denoting whether a server shutdown is in-progress
+	teardown     bool
+	teardownLock sync.RWMutex
 }
 
 func NewServer(timeout time.Duration) *Server {
@@ -74,6 +77,7 @@ func NewServer(timeout time.Duration) *Server {
 		timeout:        timeout,
 		log:            log.New(os.Stderr, "[server] ", log.Ldate|log.Ltime),
 		srvMonitorChan: make(chan monitorReply, 1000),
+		teardown:       false,
 	}
 }
 
@@ -112,7 +116,8 @@ func (s *Server) monitorHandler() {
 }
 
 func (s *Server) Handle(ctx context.Context, conn net.Conn) {
-	c := NewClient(conn, s.manager)
+	c := NewClient(ctx, conn, cfg)
+	c.consWg = &s.consumersWg
 	defer c.Close()
 
 	s.clientByID.Store(c.id, c)
@@ -155,11 +160,25 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 					writeErr = writer.WriteError("CONS " + err.Error())
 					break
 				}
+
+				// We need to hold the teardownLock in read-mode, while we're registering a new
+				// Consumer. This way we ensure that no Consumer will be registered **after** a
+				// server shutdown signal is handled.
+				s.teardownLock.RLock()
+				if s.teardown {
+					// server shutdown, release the read-lock and return
+					writeErr = writer.WriteError("CONS Server shutdown")
+					s.teardownLock.RUnlock()
+					break
+				}
+
 				cons, err := c.Consumer(topics, cfg)
 				if err != nil {
 					writeErr = writer.WriteError("CONS " + err.Error())
+					s.teardownLock.RUnlock()
 					break
 				}
+				s.teardownLock.RUnlock()
 
 				// Setup timeout: Check the last argument for
 				// an int or use the default.
@@ -275,13 +294,12 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 					break
 				}
 
-				cons, err := c.ConsumerByTopic(topic)
-				if err != nil {
-					writeErr = writer.WriteError("CONS " + err.Error())
+				if c.consumer == nil {
+					writeErr = writer.WriteError("CONS No consumer registered for Client " + c.id)
 					break
 				}
 
-				err = cons.SetOffset(topic, partition, offset+1)
+				err = c.consumer.SetOffset(topic, partition, offset+1)
 				if err != nil {
 					writeErr = writer.WriteError("CONS " + err.Error())
 					break
@@ -417,16 +435,6 @@ func (s *Server) ListenAndServe(ctx context.Context, hostport string) error {
 	var wg, inflightWg sync.WaitGroup
 	var err error
 
-	managerCtx, managerCancel := context.WithCancel(ctx)
-	s.manager = NewConsumerManager(managerCtx, cfg)
-	s.managerCancel = managerCancel
-
-	s.managerWg.Add(1)
-	go func() {
-		defer s.managerWg.Done()
-		s.manager.Run()
-	}()
-
 	s.listener, err = net.Listen("tcp", hostport)
 	if err != nil {
 		return err
@@ -477,8 +485,10 @@ Loop:
 // shutdown closes current clients and also stops accepting new clients in a
 // non-blocking manner
 func (s *Server) shutdown() {
-	s.manager.StopAcceptingConsumers()
-	s.managerCancel()
+	// Stop accepting new consumers while a server shutdown operation is in-progress.
+	s.teardownLock.Lock()
+	s.teardown = true
+	s.teardownLock.Unlock()
 
 	// Close clients with at least 1 consumer. These clients may have
 	// producers too, but we assume that they are non-critical so we close
@@ -490,7 +500,7 @@ func (s *Server) shutdown() {
 			return false
 		}
 
-		if len(c.consumers) > 0 {
+		if c.consumer != nil {
 			// This ugliness is due to the go-redisproto parser's
 			// not having a selectable channel for reading input.
 			// We're stuck with blocking on ReadCommand() and
@@ -502,7 +512,7 @@ func (s *Server) shutdown() {
 	})
 
 	// wait for consumers to actually close
-	s.managerWg.Wait()
+	s.consumersWg.Wait()
 
 	// stop accepting new clients and unblock Accept()
 	err := s.listener.Close()

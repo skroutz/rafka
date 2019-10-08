@@ -60,7 +60,9 @@ func TestConsumerTopicExclusive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expErr := "CONS Topic foo has another consumer"
+	consID := "bar:baz|foo"
+	newConsID := "bar:baz|foo,foo2"
+	expErr := fmt.Sprintf("CONS Client '%s' has Consumer '%s' registered (new consID: '%s')", id, consID, newConsID)
 	_, err = c.BLPop(1*time.Second, "topics:foo,foo2").Result()
 	if err.Error() != expErr {
 		t.Errorf("Expected error: `%s`, was `%s`", expErr, err)

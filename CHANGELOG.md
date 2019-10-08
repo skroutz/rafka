@@ -6,6 +6,23 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 ## master (unreleased)
 
 
+## 0.6.0 (2019-10-08)
+
+This is a release refactoring the internal data structures of Rafka as detailed in [Rafka
+Rethinking](https://github.com/skroutz/rafka/blob/master/docs/designs/design-rafka-rethinking.rst)
+design doc.
+
+### Changed
+
+- [BREAKING] Drop support for multiple Consumers per Client. From now on, only a [single Consumer can be
+  associated with a Client instance](https://github.com/skroutz/rafka/blob/master/docs/designs/design-rafka-rethinking.rst#redefine-rafka-scope)
+
+- [INTERNAL] The ConsumerManager module as well as the respective functionality for managing
+  Consumers has been [completely dropped from the
+  source](https://github.com/skroutz/rafka/blob/master/docs/designs/design-rafka-rethinking.rst#drop-redundant-functionality).
+  Now, the handling of Consumers is split between the Server and the respective Client instances.
+
+
 ## 0.5.0 (2019-08-29)
 
 ### Added
