@@ -6,6 +6,10 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 ## master (unreleased)
 
 
+## 0.6.1 (2019-10-09)
+
+This is a maintenance release with no changes.
+
 ## 0.6.0 (2019-10-08)
 
 This is a release refactoring the internal data structures of Rafka as detailed in [Rafka
