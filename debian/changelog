@@ -1,3 +1,9 @@
+rafka (0.6.1-1~deb9u1) stretch; urgency=medium
+
+  * New upstream release
+
+ -- Dimitris Bliamplias <bl.dimitris@gmail.com>  Wed, 09 Oct 2019 12:51:15 +0300
+
 rafka (0.6.0-1~deb9) stretch; urgency=medium
 
   * New upstream release
