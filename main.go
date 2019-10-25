@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -30,6 +31,8 @@ import (
 
 	rdkafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/urfave/cli"
+
+	_ "net/http/pprof"
 )
 
 const Version = "0.6.1"
@@ -189,6 +192,10 @@ func run(c *cli.Context) {
 			log.Fatal(err)
 		}
 
+	}()
+
+	go func() {
+		log.Println(http.ListenAndServe(":6325", nil))
 	}()
 
 	<-shutdown
