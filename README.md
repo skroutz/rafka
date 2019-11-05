@@ -201,20 +201,10 @@ dependencies via [dep](https://github.com/golang/dep):
 $ dep ensure
 ```
 
-Running the Go tests:
+To run all the tests (Go + end-to-end) do:
 
 ```shell
-$ go test
-```
-
-We also have end-to-end tests that run via Docker. Refer [here](test/README.md) for more
-information.
-
-Run tests (must have done `make spawn` before), perform various static checks and finally build the
-project:
-
-```shell
-$ make
+$ DIST=buster RDKAFKA_VERSION=v1.2.1 make test
 ```
 
 License
