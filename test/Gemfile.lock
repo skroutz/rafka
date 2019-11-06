@@ -2,16 +2,16 @@ GEM
   remote: https://rubygems.org/
   specs:
     minitest (5.11.3)
-    rafka (0.4.0)
-      redis (~> 3, >= 3.3.2)
-    redis (3.3.5)
+    rafka (0.5.0)
+      redis (>= 3.3.2)
+    redis (4.1.3)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   minitest
-  rafka (= 0.4.0)
+  rafka (= 0.5.0)
 
 BUNDLED WITH
-   1.13.6
+   1.17.3

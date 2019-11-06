@@ -4,6 +4,9 @@ services:
     image: skroutz/rafka
     build:
       context: .
+      args:
+        - DIST
+        - RDKAFKA_VERSION
     volumes:
     - ${GOPATH}/src/github.com/skroutz/rafka:/root/go/src/github.com/skroutz/rafka
     container_name: rafka
