@@ -15,6 +15,7 @@ PrivateDevices=yes
 ProtectHome=yes
 ReadOnlyPaths=/
 LimitNOFILE=16384
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
