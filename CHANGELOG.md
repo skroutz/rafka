@@ -5,6 +5,9 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 ## master (unreleased)
 
+### Changed
+
+- Debian: Restart systemd service when it fails [[#89](https://github.com/skroutz/rafka/pull/89)]
 
 ## 0.6.1 (2019-10-09)
 
