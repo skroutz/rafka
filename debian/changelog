@@ -1,3 +1,10 @@
+rafka (0.6.1-1~deb10u2) buster; urgency=medium
+
+  [ Apollon Oikonomopoulos ]
+  * systemd: restart rafka on failure
+
+ -- Olia Kremmyda <okremmyda@olia.vm.skroutz.gr>  Wed, 06 May 2020 14:01:47 +0300
+
 rafka (0.6.1-1) buster; urgency=medium
 
   * Initial buster release
