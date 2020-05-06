@@ -3,9 +3,6 @@ rafka (0.6.1-1~deb9u2) stretch; urgency=medium
   [ Apollon Oikonomopoulos ]
   * systemd: restart rafka on failure
 
-  [ Agis Anastasopoulos ]
-  * Update changelog with #89
-
  -- Olia Kremmyda <okremmyda@gmail.com>  Tue, 05 May 2020 17:59:48 +0300
 
 rafka (0.6.1-1~deb9u1) stretch; urgency=medium
