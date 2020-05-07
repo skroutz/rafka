@@ -1,4 +1,4 @@
-rafka (0.6.1-1~deb10u2) buster; urgency=medium
+rafka (0.6.1-1+deb10u2) buster; urgency=medium
 
   [ Apollon Oikonomopoulos ]
   * systemd: restart rafka on failure
