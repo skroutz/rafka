@@ -69,13 +69,12 @@ func (p *Producer) Produce(msg *rdkafka.Message) error {
 // outstanding messages.
 func (p *Producer) Flush(timeoutMs int) int {
 	return p.rdProd.Flush(timeoutMs)
-
 }
 
 // Close stops p after flushing any buffered messages. It is a blocking
 // operation.
 func (p *Producer) Close() {
-	unflushed := p.rdProd.Flush(5000)
+	unflushed := p.Flush(5000)
 	if unflushed > 0 {
 		p.log.Printf("Error flushing: %d unflushed events", unflushed)
 		atomic.AddUint64(&stats.producerUnflushed, uint64(unflushed))
