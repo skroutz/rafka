@@ -98,7 +98,15 @@ func (p *Producer) consumeDeliveries() {
 			}
 		} else {
 			p.log.Printf("Error consuming delivery event: Unknown event type (%s)", ev)
-			atomic.AddUint64(&stats.producerErr, 1)
+
+			// We can ignore 'connection reset by peer' connection errors.
+			// See https://github.com/edenhill/librdkafka/wiki/FAQ#why-am-i-seeing-receive-failed-disconnected
+			// See https://github.com/skroutz/rafka/pull/90
+			if strings.Contains(ev.String(), "Connection reset by peer") {
+				continue
+			}
+
+			atomic.AddUint64(&stats.producerUnknownEvents, 1)
 		}
 	}
 }
