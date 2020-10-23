@@ -32,7 +32,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const Version = "0.6.1"
+const Version = "0.6.2"
 
 var (
 	cfg      Config

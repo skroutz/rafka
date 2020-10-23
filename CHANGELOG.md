@@ -5,6 +5,11 @@ Breaking changes are prefixed with a "[BREAKING]" label.
 
 ## master (unreleased)
 
+## 0.6.2 (2020-10-23)
+
+- Do not log unknown events as producer errors. Introduce new stats key for
+  keeping track of unknown producer events. These events do not
+  include "Connection reset by peers" connection errors. [[#90](https://github.com/skroutz/rafka/pull/90)].
 
 ## 0.6.1 (2019-10-09)
 

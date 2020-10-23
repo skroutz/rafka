@@ -19,6 +19,17 @@ before_script:
   - cd $TRAVIS_BUILD_DIR
 script:
   - make test
+matrix:
+  include:
+    - env: "DIST=stretch RDKAFKA_VERSION=v0.11.6"
+    - env: "DIST=stretch RDKAFKA_VERSION=v1.2.2"
+    - env: "DIST=buster RDKAFKA_VERSION=v0.11.6"
+    - env: "DIST=buster RDKAFKA_VERSION=v1.2.2"
+jobs:
+  allow_failures:
+    - env: "DIST=stretch RDKAFKA_VERSION=v1.2.2"
+    - env: "DIST=buster RDKAFKA_VERSION=v0.11.6"
+    - env: "DIST=buster RDKAFKA_VERSION=v1.2.2"
 notifications:
   slack:
     secure: KDA5GK4A6P3rBWlS+UpU5jVTXKWlbljEB9cpdkX23geCPZXuhYKsr50wXPACN0cCLwH+v3LPyfBS7UGCP1I9OjK0/7ersOc+laQl9R75oNTxrlNgVsi9y23cNtBHmBpqFUAYNsXH7Why4+AdF6n/PnlOTFgUgiUwL5X8CIIYmRdOWCsQVCv7ZV1JzGUx7E3fXRr5QIWlqh7/xTGcQoyuKr11Rb/H4Q1hIA5OPgmecfjeMCsnXTv73OqFYoqEj5Kk2koRPFw7Z3G4QecIPdkhApA+M037gjZWCzXXiDysfgESDtE3XAgj4rMNnUMwTH8C68ftH1LtGd5eBwp98wmtj4mMJKue0RQrgxBqoxsyHpZJJ2dSERh78zy+G6guzm7EXkb8hy+OMJr1MZhWZ1FjLpZxQdKVF0cOgGvn+C0qgna8418kfZRBqosK2aHFPW2FjFMEOK0FkCNSE3g8uiobS0plZMTu7Cwu3uI95nmJ0x+05w7nFZM9CkPa2ZE1rcneKDJmNuoexP3TlCxX1FY8MXjC+XIVGGNSiA/tgRD+uivrZicY6NLMfy7WFLez1nBZPDGer0Uj1SCgw0M0wh3vKfwqZQuzhuHVgDNHKvPKdnswut3tuG7Mx83H9XNrm7OVCseDskFkRg+aUcquTWF2gPsJQW+FkvJ3gBUMOZqUaM4=
