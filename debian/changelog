@@ -1,3 +1,25 @@
+rafka (0.6.2-1) buster; urgency=medium
+
+  [ Agis Anastasopoulos ]
+  * test: Upgrade rafka-rb to 0.5.0, redis to 4.1.3
+  * test: Allow configuring Debian/librdkafka versions
+  * Travis: add debian/librdkafka matrix builds
+  * travis: Only consider stretch-0.11.6 for failures
+  * travis: Re-add jobs removed by mistake
+  * travis: Test librdkafka 1.2.0
+  * travis: Test librdkafka 1.2.2
+  * Update changelog with #89
+
+  [ Olia Kremmyda ]
+  * Revert "Update changelog with #89"
+
+  [ John Fragoulis ]
+  * producer: Use our Flush()
+  * producer: Do not mark ignorable events as errors
+  * Release version 0.6.2
+
+ -- Ioannis Fragoulis <john.fragkoulis@gmail.com>  Fri, 23 Oct 2020 13:31:48 +0300
+
 rafka (0.6.1-1+deb10u2) buster; urgency=medium
 
   [ Apollon Oikonomopoulos ]
