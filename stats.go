@@ -20,8 +20,9 @@ import (
 )
 
 type Stats struct {
-	producerUnflushed uint64
-	producerErr       uint64
+	producerUnflushed     uint64
+	producerErr           uint64
+	producerUnknownEvents uint64
 }
 
 func (s *Stats) toRedis() []interface{} {
@@ -30,10 +31,13 @@ func (s *Stats) toRedis() []interface{} {
 		strconv.FormatUint(atomic.LoadUint64(&s.producerUnflushed), 10),
 		"producer.delivery.errors",
 		strconv.FormatUint(atomic.LoadUint64(&s.producerErr), 10),
+		"producer.unknown.events",
+		strconv.FormatUint(atomic.LoadUint64(&s.producerUnknownEvents), 10),
 	}
 }
 
 func (s *Stats) Reset() {
 	atomic.StoreUint64(&s.producerUnflushed, 0)
 	atomic.StoreUint64(&s.producerErr, 0)
+	atomic.StoreUint64(&s.producerUnknownEvents, 0)
 }

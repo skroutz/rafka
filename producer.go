@@ -69,13 +69,12 @@ func (p *Producer) Produce(msg *rdkafka.Message) error {
 // outstanding messages.
 func (p *Producer) Flush(timeoutMs int) int {
 	return p.rdProd.Flush(timeoutMs)
-
 }
 
 // Close stops p after flushing any buffered messages. It is a blocking
 // operation.
 func (p *Producer) Close() {
-	unflushed := p.rdProd.Flush(5000)
+	unflushed := p.Flush(5000)
 	if unflushed > 0 {
 		p.log.Printf("Error flushing: %d unflushed events", unflushed)
 		atomic.AddUint64(&stats.producerUnflushed, uint64(unflushed))
@@ -99,7 +98,15 @@ func (p *Producer) consumeDeliveries() {
 			}
 		} else {
 			p.log.Printf("Error consuming delivery event: Unknown event type (%s)", ev)
-			atomic.AddUint64(&stats.producerErr, 1)
+
+			// We can ignore 'connection reset by peer' connection errors.
+			// See https://github.com/edenhill/librdkafka/wiki/FAQ#why-am-i-seeing-receive-failed-disconnected
+			// See https://github.com/skroutz/rafka/pull/90
+			if strings.Contains(ev.String(), "Connection reset by peer") {
+				continue
+			}
+
+			atomic.AddUint64(&stats.producerUnknownEvents, 1)
 		}
 	}
 }
