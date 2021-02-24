@@ -38,7 +38,7 @@ Using rafka we can:
 
 - Hide Kafka low-level details from the application and provide sane defaults, backed by the
   excellent [librdkafka](https://github.com/edenhill/librdkafka).
-- Use a Redis client instead of a Kafka client. This particularly useful in languages that lack a
+- Use a Redis client instead of a Kafka client. This is particularly useful in languages that lack a
   proper Kafka client library or do not provide concurrency primitives to implement buffering and
   other optimizations. Furthermore, writing a rafka client is much easier than writing a Kafka
   client. For a list of available client libraries see [_Client libraries_](#client-libraries).
