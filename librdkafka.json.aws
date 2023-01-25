@@ -1,0 +1,22 @@
+{
+ "general": {
+   "api.version.request": true,
+   "bootstrap.servers": "b-2.provisionedmsk.ej5qeu.c4.kafka.eu-central-1.amazonaws.com:9092,b-1.provisionedmsk.ej5qeu.c4.kafka.eu-central-1.amazonaws.com:9092",
+   "session.timeout.ms": 6000,
+   "log.connection.close": false
+ },
+ "consumer": {
+   "go.events.channel.enable": false,
+   "go.application.rebalance.enable": false,
+   "enable.auto.commit": true,
+   "auto.commit.interval.ms": 10000,
+   "enable.auto.offset.store": false,
+   "auto.offset.reset": "latest",
+   "enable.partition.eof": false
+ },
+ "producer": {
+   "go.delivery.reports": true,
+   "go.events.channel.size": 1000
+ }
+}
+
