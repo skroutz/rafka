@@ -1,0 +1,12 @@
+github.com/agis/spawn v0.0.0-20180919161208-2b1649feb264 h1:em8RGASgYoKSlY1Zq1Piyx0PfgADeLLRjTugqk3Qolc=
+github.com/agis/spawn v0.0.0-20180919161208-2b1649feb264/go.mod h1:sF5dN6cOXWeyQd6YnItaxKFZ2rxDX/hDkHU5fQ3fAG0=
+github.com/confluentinc/confluent-kafka-go v0.11.6 h1:rEblubnNXCjRThwAGnFSzLKYIRAoXLDC3A9r4ciziHU=
+github.com/confluentinc/confluent-kafka-go v0.11.6/go.mod h1:u2zNLny2xq+5rWeTQjFHbDzzNuba4P1vo31r9r4uAdg=
+github.com/confluentinc/confluent-kafka-go v1.6.1 h1:YxM/UtMQ2vgJX2gIgeJFUD0ANQYTEvfo4Cs4qKUlmGE=
+github.com/confluentinc/confluent-kafka-go v1.6.1/go.mod h1:u2zNLny2xq+5rWeTQjFHbDzzNuba4P1vo31r9r4uAdg=
+github.com/go-redis/redis v6.5.3+incompatible h1:YcqfaCuHAccgVyFKRo/pclllia8de7/jEyZVw6XyM1A=
+github.com/go-redis/redis v6.5.3+incompatible/go.mod h1:NAIEuMOZ/fxfXJIrKDQDz8wamY7mA7PouImQ2Jvg6kA=
+github.com/secmask/go-redisproto v0.0.0-20170511031412-14323b204640 h1:utEYACgQyupsNdKFRnbDScTW4vRpJxR+UGIHDwOn3LY=
+github.com/secmask/go-redisproto v0.0.0-20170511031412-14323b204640/go.mod h1:jdj5Hw1t1c0xGmYOf3Rv4sM/nhbIP3RypZ29jGZjZ5A=
+github.com/urfave/cli v1.18.1 h1:IFc93MpteseEF1dvLEwx5Zn+K7xkbIcBGp36OwYlFx8=
+github.com/urfave/cli v1.18.1/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=

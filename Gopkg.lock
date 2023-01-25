@@ -3,36 +3,59 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:3050cda1d2bb57e8f27326397e165dd1c59668bb0cbb592f82f2be3a0106edae"
   name = "github.com/agis/spawn"
   packages = ["."]
+  pruneopts = ""
   revision = "2b1649feb264e6da334b227f2233b76b8d88c96c"
 
 [[projects]]
+  digest = "1:d091b4c15112c3a24dc5b1b03290a0076fececdc9944c06cb4b8ff039f80d00a"
   name = "github.com/confluentinc/confluent-kafka-go"
   packages = ["kafka"]
+  pruneopts = ""
   revision = "460e8e43b282a1a68219df600ef63442b81faf5f"
   version = "v0.11.6"
 
 [[projects]]
+  digest = "1:72688e2ecfbb1a5ea1775574945b4e76eb8f3c04f059d36fa8945459129908f3"
   name = "github.com/go-redis/redis"
-  packages = [".","internal","internal/consistenthash","internal/hashtag","internal/pool","internal/proto"]
+  packages = [
+    ".",
+    "internal",
+    "internal/consistenthash",
+    "internal/hashtag",
+    "internal/pool",
+    "internal/proto",
+  ]
+  pruneopts = ""
   revision = "da63fe7def48e378caf9539abf64b9b1e37bc01e"
   version = "v6.5.3"
 
 [[projects]]
+  digest = "1:f3625b6d1dea2d58fe5bc8daec9595484ecc8687dd5187582b2b8f3e8dfb414a"
   name = "github.com/secmask/go-redisproto"
   packages = ["."]
+  pruneopts = ""
   revision = "14323b204640af1628764b06726c64fe040998e1"
 
 [[projects]]
+  digest = "1:58b484c6ec08df874223d884af3028b3bf0d3606bd44c60d533e161e22dbb7bd"
   name = "github.com/urfave/cli"
   packages = ["."]
+  pruneopts = ""
   revision = "a14d7d367bc02b1f57d88de97926727f2d936387"
   version = "v1.18.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b731e47c90c1ef552af3fedbf2e9bd578fa77c9925781c83042ed47bbec9f2f0"
+  input-imports = [
+    "github.com/agis/spawn",
+    "github.com/confluentinc/confluent-kafka-go/kafka",
+    "github.com/go-redis/redis",
+    "github.com/secmask/go-redisproto",
+    "github.com/urfave/cli",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

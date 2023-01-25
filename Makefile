@@ -1,15 +1,12 @@
 .PHONY: install dep build test teste2e testunit lint fmt clean run-rafka run-rafka-local testunit-local teste2e-local
 
-default: fmt install test
+default: fmt build
 
 install:
 	go install -v
 
-dep:
-	dep ensure -v
-
 build: fmt
-	CGO_ENABLED=1 go build -v -ldflags '-X main.VersionSuffix=$(shell git rev-parse HEAD)'
+	GOARCH=amd64 GOOS=linux CGO_ENABLED=1 go build -v -ldflags '-w -s -X main.VersionSuffix=$(shell git rev-parse HEAD)' -trimpath
 
 testunit-local:
 	go test -race
@@ -17,13 +14,14 @@ testunit-local:
 teste2e-local:
 	cd test && bundle install --frozen && ./end-to-end -v
 
-lint:
-	golint
-
 fmt:
-	test -z `go fmt 2>&1`
+	@if [ -n "$(shell gofmt -l . | grep -v vendor/)" ]; then \
+		echo "Source code needs re-formatting! Use 'go fmt' manually."; \
+		false; \
+	fi
 
 clean:
+	rm -rf vendor/
 	go clean
 
 run-rafka-local: build
