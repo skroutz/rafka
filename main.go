@@ -70,6 +70,10 @@ func main() {
 			Usage: "Path to librdkafka configuration file",
 			Value: "librdkafka.json",
 		},
+		cli.StringFlag{
+			Name:  "bootstrap-servers, b",
+			Usage: "Initial list of brokers (Example: '-b kafka1.example.com:9092,kafkaN.example.com')",
+		},
 	}
 
 	app.Before = func(c *cli.Context) error {
@@ -96,6 +100,11 @@ func main() {
 		}
 		if cfg.Port == 0 {
 			cfg.Port = c.Int("port")
+		}
+
+		// if broker list is given from cli, it has higher priority and the config-file's value is overwritten
+		if c.String("bootstrap-servers") != "" {
+			cfg.Librdkafka.General["bootstrap.servers"] = c.String("bootstrap-servers")
 		}
 
 		// republish config using rdkafka.SetKey() for proper error checking
