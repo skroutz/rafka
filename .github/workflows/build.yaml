@@ -1,0 +1,24 @@
+name: Deploy
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Compile the code
+      run: podman run --rm -v $(pwd):/app --workdir=/app golang:1.15 make build
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: rafka
